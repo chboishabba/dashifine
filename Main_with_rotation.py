@@ -226,124 +226,80 @@ def rotate_plane(o, a, b, axis_perp, angle_deg):
 
 # ---- Pipeline ----
 
-t0 = time.time()
 
-(best_o, best_a, best_b), (dz2, dw2, ds2) = coarse_int8_search(res=RES_COARSE)
-
-t1 = time.time()
-
-
-
-# bounds
-
-o_low = best_o.copy(); o_low[2] -= dz2; o_low[3] -= dw2
-
-a_low = best_a.copy(); a_low[2] -= ds2; a_low[3] -= ds2
-
-b_low = best_b.copy(); b_low[2] -= ds2; b_low[3] -= ds2
-
-
-
-o_high = best_o.copy(); o_high[2] += dz2; o_high[3] += dw2
-
-a_high = best_a.copy(); a_high[2] += ds2; a_high[3] += ds2
-
-b_high = best_b.copy(); b_high[2] += ds2; b_high[3] += ds2
-
-
-
-RGB_low, F_low, S_low = eval_slice_affine(RES_HI, o_low, a_low, b_low)
-
-sc_low = score_float32(RGB_low, S_low)
-
-RGB_high, F_high, S_high = eval_slice_affine(RES_HI, o_high, a_high, b_high)
-
-sc_high = score_float32(RGB_high, S_high)
-
-
-
-if sc_high >= sc_low:
-
-    label, o0, a0, b0, RGB0 = "upper", o_high, a_high, b_high, RGB_high
-
-else:
-
-    label, o0, a0, b0, RGB0 = "lower", o_low, a_low, b_low, RGB_low
-
-t2 = time.time()
-
-
-
-axis_perp = pick_perp_axis(a0, b0, seed=SEED)
-
-
-
-# build 10 symmetric angles around 0, skipping 0 to keep origin separate
-
-half = NUM_ROTATED // 2
-
-angles = [ROT_BASE_DEG * (i - half) for i in range(NUM_ROTATED)]
-
-# ensure we include +/− and possibly 0 if NUM_ROTATED is odd; but we already save origin separately
-
-
-
-# Save coarse density map
-
-RGBc, Fc, Sc = eval_slice_affine(RES_COARSE, best_o, best_a, best_b)
-
-dens_map = (Sc / (Sc.max() + 1e-7)).astype(np.float32)
-
-plt.imsave("/mnt/data/coarse_density_map.png", dens_map, cmap="gray")
-
-
-
-base_path = f"/mnt/data/slice_origin_{label}_z{float(o0[2]):+.3f}_w{float(o0[3]):+.3f}.png"
-
-plt.imsave(base_path, RGB0)
-
-paths = {"origin": base_path, "coarse_density": "/mnt/data/coarse_density_map.png"}
-
-
-
-# Render 10 rotated slices
-
-rot_paths = []
-
-for ang in angles:
-
-    o_r, a_r, b_r = rotate_plane(o0, a0, b0, axis_perp, ang)
-
-    RGB_r, _, _ = eval_slice_affine(RES_HI, o_r, a_r, b_r)
-
-    pth = f"/mnt/data/slice_rot_{int(ang):+d}deg.png"
-
-    plt.imsave(pth, RGB_r)
-
-    rot_paths.append(pth)
-
-    paths[f"rot_{ang:+.1f}"] = pth
-
-
-
-t3 = time.time()
-
-
-
-summary = {
-
-    "timings_s": {"coarse_search": t1-t0, "refine": t2-t1, "rotations": t3-t2},
-
-    "best_params_int8": {"o": best_o.tolist(), "a": best_a.tolist(), "b": best_b.tolist(),
-
-                         "half_steps": {"dz2": float(dz2), "dw2": float(dw2), "ds2": float(ds2)}},
-
-    "chosen_origin": {"which_bound": label, "o": o0.tolist(), "a": a0.tolist(), "b": b0.tolist()},
-
-    "rotation_angles_deg": angles,
-
-    "paths": paths
-
-}
-
-summary
+def main():
+    t0 = time.time()
+
+    (best_o, best_a, best_b), (dz2, dw2, ds2) = coarse_int8_search(res=RES_COARSE)
+
+    t1 = time.time()
+
+    # bounds
+    o_low = best_o.copy(); o_low[2] -= dz2; o_low[3] -= dw2
+    a_low = best_a.copy(); a_low[2] -= ds2; a_low[3] -= ds2
+    b_low = best_b.copy(); b_low[2] -= ds2; b_low[3] -= ds2
+
+    o_high = best_o.copy(); o_high[2] += dz2; o_high[3] += dw2
+    a_high = best_a.copy(); a_high[2] += ds2; a_high[3] += ds2
+    b_high = best_b.copy(); b_high[2] += ds2; b_high[3] += ds2
+
+    RGB_low, F_low, S_low = eval_slice_affine(RES_HI, o_low, a_low, b_low)
+    sc_low = score_float32(RGB_low, S_low)
+    RGB_high, F_high, S_high = eval_slice_affine(RES_HI, o_high, a_high, b_high)
+    sc_high = score_float32(RGB_high, S_high)
+
+    if sc_high >= sc_low:
+        label, o0, a0, b0, RGB0 = "upper", o_high, a_high, b_high, RGB_high
+    else:
+        label, o0, a0, b0, RGB0 = "lower", o_low, a_low, b_low, RGB_low
+    t2 = time.time()
+
+    axis_perp = pick_perp_axis(a0, b0, seed=SEED)
+
+    # build 10 symmetric angles around 0, skipping 0 to keep origin separate
+    half = NUM_ROTATED // 2
+    angles = [ROT_BASE_DEG * (i - half) for i in range(NUM_ROTATED)]
+    # ensure we include +/− and possibly 0 if NUM_ROTATED is odd; but we already save origin separately
+
+    # Save coarse density map
+    RGBc, Fc, Sc = eval_slice_affine(RES_COARSE, best_o, best_a, best_b)
+    dens_map = (Sc / (Sc.max() + 1e-7)).astype(np.float32)
+    plt.imsave("/mnt/data/coarse_density_map.png", dens_map, cmap="gray")
+
+    base_path = f"/mnt/data/slice_origin_{label}_z{float(o0[2]):+.3f}_w{float(o0[3]):+.3f}.png"
+    plt.imsave(base_path, RGB0)
+    paths = {"origin": base_path, "coarse_density": "/mnt/data/coarse_density_map.png"}
+
+    # Render 10 rotated slices
+    rot_paths = []
+    for ang in angles:
+        o_r, a_r, b_r = rotate_plane(o0, a0, b0, axis_perp, ang)
+        RGB_r, _, _ = eval_slice_affine(RES_HI, o_r, a_r, b_r)
+        pth = f"/mnt/data/slice_rot_{int(ang):+d}deg.png"
+        plt.imsave(pth, RGB_r)
+        rot_paths.append(pth)
+        paths[f"rot_{ang:+.1f}"] = pth
+
+    t3 = time.time()
+
+    summary = {
+        "timings_s": {"coarse_search": t1 - t0, "refine": t2 - t1, "rotations": t3 - t2},
+        "best_params_int8": {
+            "o": best_o.tolist(),
+            "a": best_a.tolist(),
+            "b": best_b.tolist(),
+            "half_steps": {
+                "dz2": float(dz2),
+                "dw2": float(dw2),
+                "ds2": float(ds2),
+            },
+        },
+        "chosen_origin": {"which_bound": label, "o": o0.tolist(), "a": a0.tolist(), "b": b0.tolist()},
+        "rotation_angles_deg": angles,
+        "paths": paths,
+    }
+    return summary
+
+
+if __name__ == "__main__":
+    main()
