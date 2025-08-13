@@ -11,7 +11,7 @@ This project searches a procedurally defined 4D color field for interesting 2D s
 Install dependencies with:
 
 ```bash
-pip install numpy matplotlib scipy
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -111,20 +111,13 @@ In this demo, we generate 10 evenly-spaced angles, giving a sense of the structu
 
 
 ---
+## Example Output
 
-Example output
+Sample output from a run of `Main_with_rotation.py`:
 
-From a single run you get:
-
-Coarse density map (int8) — shows where the data is most “active”.
-
-Origin slice (float32) — highest-scoring refined slice.
-
-Rotated slices — different angles around the perpendicular axis.
-
-
-These are saved as .png images for easy inspection.
-
+![Coarse Density Map](examples/coarse_density_map.png)
+![Origin Slice](examples/slice_origin.png)
+![Rotated Slice](examples/slice_rot_10deg.png)
 
 ---
 
