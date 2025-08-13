@@ -1,9 +1,7 @@
 import numpy as np
-
 import matplotlib.pyplot as plt
-
 from scipy.special import erf
-
+from typing import Tuple, Optional
 import time, json
 
 
@@ -52,175 +50,288 @@ CLASSES = [C_centers, M_centers, Y_centers, K_centers]
 
 
 
-def gelu(x): return 0.5 * x * (1 + erf(x / np.sqrt(2)))
+def gelu(x: np.ndarray) -> np.ndarray:
+    """Apply the Gaussian error linear unit (GELU) activation.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Input values.
+
+    Returns
+    -------
+    np.ndarray
+        The GELU-transformed values.
+
+    Side Effects
+    ------------
+    None.
+    """
+
+    return 0.5 * x * (1 + erf(x / np.sqrt(2)))
 
 
 
-def eval_slice_affine(res, o, a, b, sharpness=SHARPNESS, tie_gamma=TIE_GAMMA, tie_strength=TIE_STRENGTH, intensity_scale=INTENSITY_SCALE):
+def eval_slice_affine(
+    res: int,
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    sharpness: float = SHARPNESS,
+    tie_gamma: float = TIE_GAMMA,
+    tie_strength: float = TIE_STRENGTH,
+    intensity_scale: bool = INTENSITY_SCALE,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Evaluate the field on an affine slice and produce an RGB image.
 
-    u = np.linspace(-1, 1, res, dtype=np.float32); v = np.linspace(-1, 1, res, dtype=np.float32)
+    Parameters
+    ----------
+    res : int
+        Resolution of the square output image.
+    o, a, b : np.ndarray
+        Origin and two spanning vectors of the slice in 4D.
+    sharpness, tie_gamma, tie_strength : float
+        Parameters controlling class field falloff and tie penalty.
+    intensity_scale : bool
+        If ``True``, scale RGB channels by overall field intensity.
 
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray, np.ndarray]
+        The RGB image, per-class fields, and summed field intensity ``S``.
+
+    Side Effects
+    ------------
+    None.
+    """
+
+    u = np.linspace(-1, 1, res, dtype=np.float32)
+    v = np.linspace(-1, 1, res, dtype=np.float32)
     U, V = np.meshgrid(u, v, indexing="ij")
-
-    X = o[0] + U*a[0] + V*b[0]; Y = o[1] + U*a[1] + V*b[1]; Z = o[2] + U*a[2] + V*b[2]; W = o[3] + U*a[3] + V*b[3]
-
+    X = o[0] + U * a[0] + V * b[0]
+    Y = o[1] + U * a[1] + V * b[1]
+    Z = o[2] + U * a[2] + V * b[2]
+    W = o[3] + U * a[3] + V * b[3]
     fields = []
-
     for centers in CLASSES:
-
         f = np.zeros_like(X, dtype=np.float32)
-
         for c in centers:
-
-            dx = X - c[0]; dy = Y - c[1]; dz = Z - c[2]; dw = W - c[3]
-
-            d = np.sqrt(dx*dx + dy*dy + dz*dz + dw*dw, dtype=np.float32)
-
+            dx = X - c[0]
+            dy = Y - c[1]
+            dz = Z - c[2]
+            dw = W - c[3]
+            d = np.sqrt(dx * dx + dy * dy + dz * dz + dw * dw, dtype=np.float32)
             f += gelu((1.0 - d) * sharpness).astype(np.float32)
-
         fields.append(f)
-
     fields = np.stack(fields, axis=0)
-
     max1 = np.max(fields, axis=0)
-
     neg_inf = np.full_like(fields, -np.inf, dtype=np.float32)
-
-    mask = (fields == max1[None, ...])
-
-    fields_masked = np.where(mask, neg_inf, fields); max2 = np.max(fields_masked, axis=0)
-
+    mask = fields == max1[None, ...]
+    fields_masked = np.where(mask, neg_inf, fields)
+    max2 = np.max(fields_masked, axis=0)
     tie_pen = gelu(-tie_gamma * (max1 - max2).astype(np.float32)).astype(np.float32)
-
     fields *= (1 - tie_strength * tie_pen)[None, ...]
-
     S = fields.sum(axis=0) + np.float32(1e-7)
-
     w = fields / S[None, ...]
-
     wC, wM, wY, wK = w[0], w[1], w[2], w[3]
-
-    R = (1 - wM) * (1 - wK); G = (1 - wY) * (1 - wK); B = (1 - wC) * (1 - wK)
-
+    R = (1 - wM) * (1 - wK)
+    G = (1 - wY) * (1 - wK)
+    B = (1 - wC) * (1 - wK)
     if intensity_scale:
-
-        intensity = np.clip(S / S.max(), 0, 1).astype(np.float32); R *= intensity; G *= intensity; B *= intensity
-
+        intensity = np.clip(S / S.max(), 0, 1).astype(np.float32)
+        R *= intensity
+        G *= intensity
+        B *= intensity
     RGB = np.clip(np.stack([R, G, B], axis=-1), 0, 1).astype(np.float32)
-
     return RGB, fields, S
 
 
 
-def score_float32(RGB, S):
 
-    act = float(S.mean()); var = float(np.var(RGB.reshape(-1,3), axis=0).mean())
+def score_float32(RGB: np.ndarray, S: np.ndarray) -> float:
+    """Compute a heuristic score from image variance and field strength.
 
-    return 0.6*act + 0.4*var
+    Parameters
+    ----------
+    RGB : np.ndarray
+        Rendered RGB image.
+    S : np.ndarray
+        Summed field intensity.
+
+    Returns
+    -------
+    float
+        Weighted combination of intensity and colour variance.
+
+    Side Effects
+    ------------
+    None.
+    """
+
+    act = float(S.mean())
+    var = float(np.var(RGB.reshape(-1, 3), axis=0).mean())
+    return 0.6 * act + 0.4 * var
 
 
 
-def coarse_int8_search(res=RES_COARSE):
+
+def coarse_int8_search(res: int = RES_COARSE) -> Tuple[Tuple[np.ndarray, np.ndarray, np.ndarray], Tuple[float, float, float]]:
+    """Coarsely search slice parameters using int8 approximations.
+
+    Parameters
+    ----------
+    res : int
+        Resolution for evaluating candidate slices.
+
+    Returns
+    -------
+    Tuple[Tuple[np.ndarray, np.ndarray, np.ndarray], Tuple[float, float, float]]
+        Best parameters ``(o, a, b)`` and half-step uncertainties ``(dz2, dw2, ds2)``.
+
+    Side Effects
+    ------------
+    None.
+    """
 
     z0_vals = np.linspace(Z0_RANGE[0], Z0_RANGE[1], Z0_STEPS, dtype=np.float32)
-
     w0_vals = np.linspace(W0_RANGE[0], W0_RANGE[1], W0_STEPS, dtype=np.float32)
-
     slopes = SLOPES
-
-    best=None; best_params=None
-
+    best: Optional[float] = None
+    best_params: Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]] = None
     for z0 in z0_vals:
-
         for w0 in w0_vals:
-
             for sz_u in slopes:
-
                 for sw_u in slopes:
-
                     for sz_v in slopes:
-
                         for sw_v in slopes:
-
                             o = np.array([0.0, 0.0, z0, w0], dtype=np.float32)
-
                             a = np.array([1.0, 0.0, sz_u, sw_u], dtype=np.float32)
-
                             b = np.array([0.0, 1.0, sz_v, sw_v], dtype=np.float32)
-
                             RGB, fields, S = eval_slice_affine(res, o, a, b)
-
                             fmin, fmax = fields.min(), fields.max()
-
-                            if fmax <= fmin + 1e-8: continue
-
+                            if fmax <= fmin + 1e-8:
+                                continue
                             fields_u8 = np.clip(((fields - fmin) / (fmax - fmin) * 255.0).round(), 0, 255).astype(np.uint8)
-
                             S_u8 = np.clip(fields_u8.sum(axis=0), 0, 255).astype(np.uint8)
-
-                            fields32 = fields_u8.astype(np.float32); S32 = S_u8.astype(np.float32) + 1e-7
-
+                            fields32 = fields_u8.astype(np.float32)
+                            S32 = S_u8.astype(np.float32) + 1e-7
                             w = fields32 / S32[None, ...]
-
                             wC, wM, wY, wK = w[0], w[1], w[2], w[3]
-
-                            R = (1 - wM) * (1 - wK); G = (1 - wY) * (1 - wK); B = (1 - wC) * (1 - wK)
-
+                            R = (1 - wM) * (1 - wK)
+                            G = (1 - wY) * (1 - wK)
+                            B = (1 - wC) * (1 - wK)
                             RGBu = np.clip(np.stack([R, G, B], axis=-1), 0, 1).astype(np.float32)
-
-                            act = float(S_u8.mean()) / 255.0; var = float(np.var(RGBu.reshape(-1,3), axis=0).mean())
-
-                            sc = 0.6*act + 0.4*var
-
+                            act = float(S_u8.mean()) / 255.0
+                            var = float(np.var(RGBu.reshape(-1, 3), axis=0).mean())
+                            sc = 0.6 * act + 0.4 * var
                             if (best is None) or (sc > best):
-
-                                best = sc; best_params = (o, a, b)
-
+                                best = sc
+                                best_params = (o, a, b)
     dz = (Z0_RANGE[1] - Z0_RANGE[0]) / (Z0_STEPS - 1)
-
     dw = (W0_RANGE[1] - W0_RANGE[0]) / (W0_STEPS - 1)
-
     ds = (SLOPES[1] - SLOPES[0]) if len(SLOPES) > 1 else 0.0
+    if best_params is None:
+        raise ValueError("No valid slice found")
+    return best_params, (dz / 2.0, dw / 2.0, ds / 2.0)
 
-    return best_params, (dz/2.0, dw/2.0, ds/2.0)
 
 
 
-def orthonormalize(a, b, eps=1e-8):
+def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.ndarray, np.ndarray]:
+    """Orthonormalize two vectors spanning a plane.
 
-    a = a.astype(np.float32); b = b.astype(np.float32)
+    Parameters
+    ----------
+    a, b : np.ndarray
+        Input vectors.
+    eps : float
+        Small value added to norms to avoid division by zero.
 
-    na = np.linalg.norm(a) + eps; a /= na
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Orthonormalized versions of ``a`` and ``b``.
 
-    b = b - (a @ b) * a; nb = np.linalg.norm(b) + eps; b /= nb
+    Side Effects
+    ------------
+    None.
+    """
 
+    a = a.astype(np.float32)
+    b = b.astype(np.float32)
+    na = np.linalg.norm(a) + eps
+    a /= na
+    b = b - (a @ b) * a
+    nb = np.linalg.norm(b) + eps
+    b /= nb
     return a, b
 
 
 
-def pick_perp_axis(a, b, seed=SEED):
 
-    rng = np.random.default_rng(seed); v = rng.normal(size=a.shape).astype(np.float32)
+def pick_perp_axis(a: np.ndarray, b: np.ndarray, seed: int = SEED) -> np.ndarray:
+    """Generate a unit vector perpendicular to the plane spanned by ``a`` and ``b``.
 
-    a1, b1 = orthonormalize(a, b); v = v - (v @ a1) * a1 - (v @ b1) * b1
+    Parameters
+    ----------
+    a, b : np.ndarray
+        Vectors defining the plane.
+    seed : int
+        Seed for the random number generator.
 
-    nv = np.linalg.norm(v) + 1e-8; return v / nv
+    Returns
+    -------
+    np.ndarray
+        Unit vector perpendicular to the plane of ``a`` and ``b``.
+
+    Side Effects
+    ------------
+    Consumes NumPy's random number generator.
+    """
+
+    rng = np.random.default_rng(seed)
+    v = rng.normal(size=a.shape).astype(np.float32)
+    a1, b1 = orthonormalize(a, b)
+    v = v - (v @ a1) * a1 - (v @ b1) * b1
+    nv = np.linalg.norm(v) + 1e-8
+    return v / nv
 
 
 
-def rotate_plane(o, a, b, axis_perp, angle_deg):
+
+def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis_perp: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rotate the slice plane around an axis perpendicular to it.
+
+    Parameters
+    ----------
+    o : np.ndarray
+        Origin of the plane.
+    a, b : np.ndarray
+        Spanning vectors defining the plane.
+    axis_perp : np.ndarray
+        Axis about which to rotate ``a``.
+    angle_deg : float
+        Rotation angle in degrees.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray, np.ndarray]
+        The origin (unchanged), rotated ``a`` vector and re-orthonormalized ``b``.
+
+    Side Effects
+    ------------
+    None.
+    """
 
     a1, b1 = orthonormalize(a, b)
-
-    n = axis_perp.copy(); n = n - (n @ a1) * a1 - (n @ b1) * b1
-
+    n = axis_perp.copy()
+    n = n - (n @ a1) * a1 - (n @ b1) * b1
     n /= (np.linalg.norm(n) + 1e-8)
-
     theta = np.deg2rad(angle_deg).astype(np.float32)
-
     a_rot = (np.cos(theta) * a1) + (np.sin(theta) * n)
+    a_rot, b_new = orthonormalize(a_rot, b1)
+    return o, a_rot, b_new
 
-    a_rot, b_new = orthonormalize(a_rot, b1); return o, a_rot, b_new
 
 
 
