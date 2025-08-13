@@ -38,3 +38,150 @@ Adjust these values (and others like search ranges or random seed) to experiment
 
 ## License
 Distributed under the terms of the [Mozilla Public License 2.0](LICENSE).
+
+
+
+further info:
+
+
+---
+
+dashifine
+
+dashifine is a visual exploration tool for slicing and inspecting high-dimensional scalar fields — designed here for a 4D CMYK colour field — with an adaptive, two-phase search that balances speed and detail.
+
+Overview
+
+Most visualisation approaches either:
+
+Render the entire high-dimensional field (which is prohibitively expensive), or
+
+Choose arbitrary slices that may miss the most “interesting” regions.
+
+
+dashifine instead:
+
+1. Coarsely scans the space in fast, low-precision int8 to locate promising slices.
+
+
+2. Refines only the most promising slice in full-precision float32.
+
+
+3. Expands the view by rotating that slice to generate multiple perspectives.
+
+
+
+This lets you see the “shape” of your data while keeping computation tractable.
+
+
+---
+
+How it works
+
+1. Field definition
+
+We define a continuous 4D field where each point’s CMYK weights are based on its Euclidean distance to predefined class centres. A GELU activation softens the edges.
+
+2. Coarse int8 search
+
+Instead of evaluating every slice in float32:
+
+We grid-search over origin positions (z0, w0) and directional slopes in both axes.
+
+We compute the field in 8-bit integers (uint8), which is much faster.
+
+We score each candidate slice by combining field activity and colour variance.
+
+
+3. Bound refinement
+
+The best coarse slice is refined by testing upper and lower bounds based on the resolution step sizes in (z, w) and slope space.
+We keep whichever bound scores higher in float32.
+
+4. Perpendicular rotations
+
+Once we have the “best” slice:
+
+We compute a perpendicular axis in 4D space.
+
+We rotate the slice plane around that axis to produce a fan of additional views.
+
+In this demo, we generate 10 evenly-spaced angles, giving a sense of the structure around the best slice.
+
+
+
+---
+
+Example output
+
+From a single run you get:
+
+Coarse density map (int8) — shows where the data is most “active”.
+
+Origin slice (float32) — highest-scoring refined slice.
+
+Rotated slices — different angles around the perpendicular axis.
+
+
+These are saved as .png images for easy inspection.
+
+
+---
+
+Why not just use float32 everywhere?
+
+Because the space of possible slices is huge. Even in 4D:
+
+Brute-forcing all origins and directions at high resolution would take orders of magnitude more time and memory.
+
+The coarse int8 phase can skip 99% of the search space.
+
+The bound refinement step bridges the precision gap without losing much accuracy.
+
+
+
+---
+
+Usage
+
+python dashifine.py
+
+Outputs:
+
+coarse_density_map.png
+
+slice_origin_<...>.png
+
+slice_rot_<angle>.png × N
+
+
+Tune parameters at the top of the file:
+
+RES_HI, RES_COARSE — resolution of refined/coarse passes
+
+Z0_RANGE, Z0_STEPS, W0_RANGE, W0_STEPS — search bounds in the fixed dims
+
+SLOPES — slopes for slice plane directions
+
+NUM_ROTATED, ROT_BASE_DEG — how many rotated views, and angular spacing
+
+
+
+---
+
+Roadmap
+
+Generalise to N-dimensional fields
+
+Plug-in field definitions (not just CMYK)
+
+Interactive viewer for navigating slices in real-time
+
+Optional GPU acceleration
+
+
+
+---
+
+Do you want me to now also include a rendered example set of the 10 slices in the README so GitHub visitors can immediately see the output without running the code? That would make the repo more compelling visually.
+
