@@ -1,4 +1,4 @@
-# Dashifine
+# dashifine
 
 This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.
 
