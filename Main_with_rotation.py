@@ -20,6 +20,14 @@ TIE_GAMMA = 0.9
 TIE_STRENGTH = 0.35
 
 INTENSITY_SCALE = True
+
+# Additional global defaults mirroring Config dataclass
+NUM_ROTATED = 10
+ROT_BASE_DEG = 10.0
+Z0_STEPS = 5
+W0_STEPS = 5
+SLOPES = (-0.4, 0.0, 0.4)
+SEED = 7
 import time, json, argparse
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -175,19 +183,13 @@ def eval_slice_affine(res, o, a, b, cfg: Config):
     R = (1 - wM) * (1 - wK)
     G = (1 - wY) * (1 - wK)
     B = (1 - wC) * (1 - wK)
-    if intensity_scale:
+    if cfg.intensity_scale:
         intensity = np.clip(S / S.max(), 0, 1).astype(np.float32)
         R *= intensity
         G *= intensity
         B *= intensity
     RGB = np.clip(np.stack([R, G, B], axis=-1), 0, 1).astype(np.float32)
     return RGB, fields, S
-
-    R = (1 - wM) * (1 - wK); G = (1 - wY) * (1 - wK); B = (1 - wC) * (1 - wK)
-
-    if cfg.intensity_scale:
-
-
 
 
 def score_float32(RGB: np.ndarray, S: np.ndarray) -> float:
@@ -301,18 +303,6 @@ def orthonormalize(a, b, eps=1e-8):
     b = b - (a @ b) * a; nb = np.linalg.norm(b) + eps; b /= nb
 
     return a, b
-
-
-
-def pick_perp_axis(a, b, seed=SEED):
-
-    rng = np.random.default_rng(seed); v = rng.normal(size=a.shape).astype(np.float32)
-
-    a1, b1 = orthonormalize(a, b); v = v - (v @ a1) * a1 - (v @ b1) * b1
-
-    nv = np.linalg.norm(v) + 1e-8; return v / nv
-
-
 
 def rotate_plane(o, a, b, axis_perp, angle_deg):
 
@@ -451,7 +441,6 @@ def main(
             SLOPES,
             SEED,
         ) = old_vals
-                                best = sc; best_params = (o, a, b)
 
     dz = (cfg.z0_range[1] - cfg.z0_range[0]) / (cfg.z0_steps - 1)
 
@@ -493,8 +482,6 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
 
 
 
-
-def pick_perp_axis(a, b, seed):
 
 def pick_perp_axis(a: np.ndarray, b: np.ndarray, seed: int = SEED) -> np.ndarray:
     """Generate a unit vector perpendicular to the plane spanned by ``a`` and ``b``.
@@ -671,20 +658,9 @@ def main(cfg: Config):
             "half_steps": {"dz2": float(dz2), "dw2": float(dw2), "ds2": float(ds2)},
         },
         "chosen_origin": {"which_bound": label, "o": o0.tolist(), "a": a0.tolist(), "b": b0.tolist()},
-        "rotation_angles_deg": angles,
-        "paths": paths,
-    }
-    return summary
-
-
-if __name__ == "__main__":
-    main()
-
-
-
-    print(json.dumps(summary, indent=2))
-    return summary
-
+    "rotation_angles_deg": angles,
+    "paths": paths,
+}
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate rotated slices")
