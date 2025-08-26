@@ -1,6 +1,15 @@
 import numpy as np
 from pathlib import Path
-from Main_with_rotation import main
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from dashifine.Main_with_rotation import (
+    gelu,
+    main,
+    orthonormalize,
+    rotate_plane,
+)
 
 
 def test_main_creates_outputs(tmp_path):

@@ -1,5 +1,15 @@
 import numpy as np
-from Main_with_rotation import gelu, orthonormalize, rotate_plane
+from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from dashifine.Main_with_rotation import (
+    gelu,
+    main,
+    orthonormalize,
+    rotate_plane,
+)
 
 
 def test_gelu_is_odd():
