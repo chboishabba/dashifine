@@ -68,6 +68,12 @@ class FieldCenters:
 BETA: float = 1.5
 CENTERS: FieldCenters = FieldCenters()
 
+try:  # pragma: no cover - allow running as script
+    from .palette import lineage_hue_from_address, eigen_palette
+except Exception:  # pragma: no cover
+    from palette import lineage_hue_from_address, eigen_palette
+
+from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
 # Basic maths helpers
@@ -80,6 +86,9 @@ CENTERS: FieldCenters = FieldCenters()
 
 @dataclass
 class FieldCenters:
+    """Lightweight container for field centre parameters."""
+
+    mu: np.ndarray
     """Parameterisation of anisotropic radial basis functions in 4D."""
 
     mu: np.ndarray
@@ -102,7 +111,6 @@ def gelu(x: np.ndarray) -> np.ndarray:
 def gelu(x: np.ndarray) -> np.ndarray:
     """Tiny odd activation used in the tests."""
 
-=======
 
 @dataclass
 class FieldCenters:
@@ -111,6 +119,16 @@ class FieldCenters:
     sigma: np.ndarray
     w: np.ndarray
 
+
+# Simple default centres used in tests and examples
+CENTERS = FieldCenters(
+    mu=np.zeros((1, 4), dtype=np.float32),
+    sigma=np.ones((1, 4), dtype=np.float32),
+    w=np.ones(1, dtype=np.float32),
+)
+
+# Default exponent for density-to-opacity mapping
+BETA = 1.5
 
 BETA: float = 1.5
 CENTERS = FieldCenters(
@@ -593,6 +611,7 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
 
 
+
 @dataclass
 class FieldCenters:
     """Simple container for field centre parameters."""
@@ -1054,7 +1073,7 @@ def main(
         num_classes = weights_hi.shape[-1]
         palette_rgb = np.zeros((num_classes, 3), dtype=np.float32)
         for i in range(num_classes):
-            h, s, v = lineage_hsv_from_address(str(i))
+            h, s, v = lineage_hue_from_address(str(i))
             palette_rgb[i] = hsv_to_rgb([h, s, v])
         weights_norm = weights_hi / (
             np.sum(weights_hi, axis=-1, keepdims=True) + 1e-8

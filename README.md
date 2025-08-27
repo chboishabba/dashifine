@@ -42,6 +42,21 @@ The `render` function accepts two 2D arrays per pixel:
 Setting `palette="p_adic"` maps `addresses` to hue and `depth` to saturation,
 producing an RGB image via HSV conversion.
 
+### Palette options
+
+`Main_with_rotation.py` exposes a `--palette` flag to control colouring. The
+available choices are `cmy`, `lineage`, and `eigen`. For example, to render
+using the lineage palette:
+
+```bash
+python Main_with_rotation.py --output_dir examples --palette lineage
+```
+
+The default `cmy` palette blends cyan, magenta, and yellow.  `lineage` assigns a
+stable hue based on each centre's address, while `eigen` currently falls back to
+grayscale until a PCA-based colouring is implemented.
+
+
 ## Configuration
 `Main_with_rotation.py` exposes several constants at the top of the file that control behavior, such as:
 
