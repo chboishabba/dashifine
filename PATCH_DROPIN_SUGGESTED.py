@@ -113,11 +113,35 @@ def lineage_hue_from_address(addr_digits: str) -> float:
 
 def eigen_palette(W: np.ndarray) -> np.ndarray:
     """
-    TODO: project class weights to 3D (PCA/UMAP/etc.) for RGB; stub uses top-class gray.
-    W: (HW,C)
+    Project class weights to three principal components for colouring.
+
+    Parameters
+    ----------
+    W : np.ndarray
+        Array of shape (HW, C) containing per-pixel class weights.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (HW, 3) with each principal component normalised to [0,1].
     """
-    top = np.max(W, axis=1, keepdims=True)
-    RGB = np.repeat(top, 3, axis=1)
+    if W.size == 0:
+        return np.zeros((0, 3), dtype=np.float32)
+
+    # Mean centre and perform SVD
+    Wc = W - np.mean(W, axis=0, keepdims=True)
+    _, _, Vt = np.linalg.svd(Wc, full_matrices=False)
+
+    # Project onto the first three principal components
+    proj = Wc @ Vt[:3].T  # (HW, min(3, C))
+    if proj.shape[1] < 3:
+        proj = np.pad(proj, ((0, 0), (0, 3 - proj.shape[1])), mode="constant")
+
+    # Normalise each component independently to [0,1]
+    min_vals = proj.min(axis=0, keepdims=True)
+    max_vals = proj.max(axis=0, keepdims=True)
+    denom = np.where(max_vals - min_vals > 1e-8, max_vals - min_vals, 1.0)
+    RGB = (proj - min_vals) / denom
     return np.clip(RGB, 0.0, 1.0)
 
 
