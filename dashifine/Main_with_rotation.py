@@ -419,7 +419,7 @@ class Center:
     w: float
 
 def sample_slice_image(o: np.ndarray, a: np.ndarray, b: np.ndarray, res: int) -> np.ndarray:
-    """Map pixel coordinates of a slice image to 4D positions."""
+    """Map pixel coordinates of a slice image to 4 D positions."""
 
     xs = np.linspace(-0.5, 0.5, res, endpoint=False, dtype=np.float32) + 0.5 / res
     ys = np.linspace(-0.5, 0.5, res, endpoint=False, dtype=np.float32) + 0.5 / res
