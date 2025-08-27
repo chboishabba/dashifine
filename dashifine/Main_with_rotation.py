@@ -564,7 +564,7 @@ def field_and_classes(
     return rho, F
 
 def sample_slice_image(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray) -> np.ndarray:
-    """Map each pixel of an ``H``×``W`` grid to 4-D coordinates.
+    """Map each pixel of an ``H`` x ``W`` grid to 4-D coordinates.
 
     The slice is defined by ``origin4`` and basis vectors ``a4`` and ``b4``. For
     pixel coordinates ``(u, v)`` in ``[-1, 1]`` the mapped point is
@@ -910,7 +910,7 @@ def render_slice(
 
 
 def _field_density(res: int, centers: FieldCenters = CENTERS, beta: float = BETA) -> np.ndarray:
-    """Evaluate the synthetic field on a ``res``×``res`` grid."""
+    """Evaluate the synthetic field on a ``res`` x ``res`` grid."""
 
     mu, sigma, w = centers.mu, centers.sigma, centers.w
 
