@@ -40,6 +40,27 @@ import numpy as np
 import hashlib
 import re
 from matplotlib.colors import hsv_to_rgb
+from dataclasses import dataclass, field
+
+
+@dataclass
+class FieldCenters:
+    """Minimal container for synthetic field parameters.
+
+    This lightweight placeholder ensures the module imports during tests without
+    requiring the full demo configuration."""
+
+    mu: np.ndarray = field(
+        default_factory=lambda: np.zeros((0, 2), dtype=np.float32)
+    )
+    sigma: np.ndarray = field(
+        default_factory=lambda: np.ones((0, 2), dtype=np.float32)
+    )
+    w: np.ndarray = field(default_factory=lambda: np.ones(0, dtype=np.float32))
+
+
+BETA: float = 1.5
+CENTERS: FieldCenters = FieldCenters()
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +198,7 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
 
 
 
+
 # ---------------------------------------------------------------------------
 # 4‑D rotation and sampling utilities
 def rotate_plane(
@@ -220,8 +242,13 @@ def rotate_plane_4d(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``.
 
+    The plane is defined by two (not necessarily normalised) vectors ``u`` and
+    ``v``. Any component of the inputs lying in this plane is rotated by
+    ``angle_deg`` degrees while the orthogonal component is left unchanged.
+    """
     u, v = orthonormalize(u, v)
     theta = np.deg2rad(angle_deg)
+    """
     ``u`` and ``v`` need not be normalised; they simply define the rotation
     plane.  Components of the inputs that lie in this plane are rotated by
     ``angle_deg`` degrees while orthogonal components remain unchanged.
@@ -384,6 +411,13 @@ def temperature_from_margin(F_i: np.ndarray) -> float:
         g2[:, j] = c.w * gelu(a_eff * (1.0 - r))
     g2 = np.maximum(g2, 0.0)
 
+def rotate_plane(
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     F = g2 @ V.T
     rho_final = np.sum(g2, axis=1)
     return rho_final, F
