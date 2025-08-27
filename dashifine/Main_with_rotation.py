@@ -33,6 +33,8 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Tuple, Dict, Any, List
+from dataclasses import dataclass
 from typing import Tuple, Dict, Any
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple
@@ -90,6 +92,22 @@ def gelu(x: np.ndarray) -> np.ndarray:
 
     return np.tanh(x)
 
+
+
+@dataclass
+class FieldCenters:
+    """Container for centre parameters ``mu``, ``sigma`` and ``w``."""
+    mu: np.ndarray
+    sigma: np.ndarray
+    w: np.ndarray
+
+
+BETA: float = 1.5
+CENTERS = FieldCenters(
+    mu=np.zeros((1, 2), dtype=np.float32),
+    sigma=np.ones((1, 2), dtype=np.float32),
+    w=np.ones(1, dtype=np.float32),
+)
 
 # A few hard coded centres used by tests
 # Default centres used for examples and tests.  The ``z`` and ``w`` coordinates
@@ -442,6 +460,67 @@ def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, 
 def mix_cmy_to_rgb(weights: np.ndarray) -> np.ndarray:
     """Mix CMY(K) weights to RGB."""
 
+
+# ----------------------------- density & classes -----------------------------
+
+def alpha_eff(
+    rho_tilde: np.ndarray,
+    a_min: float = 0.6,
+    a_max: float = 2.2,
+    lam: float = 1.0,
+    eta: float = 0.7,
+) -> np.ndarray:
+    """Effective sharpness ``α_eff(ρ̃)`` used to couple mass and kernel width."""
+    t = np.clip(rho_tilde, 0.0, 1.0) ** eta
+    return (1 - lam * t) * a_min + lam * t * a_max
+
+
+def field_and_classes(
+    points4: np.ndarray,
+    centers: List[Dict[str, np.ndarray]],
+    V: np.ndarray,
+    rho_eps: float = 1e-6,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Compute density and class scores for ``points4``.
+
+    Parameters
+    ----------
+    points4:
+        Array of shape ``(HW, 4)`` containing sample points.
+    centers:
+        List of dictionaries with ``mu``, ``sigma`` and ``w`` for each centre.
+    V:
+        Array of shape ``(C, N)`` giving class loadings.
+    rho_eps:
+        Small constant to avoid division by zero in normalisation.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        ``rho`` of shape ``(HW,)`` and class scores ``F`` of shape ``(HW, C)``.
+    """
+    HW = points4.shape[0]
+    N = len(centers)
+    g = np.zeros((HW, N), dtype=np.float32)
+
+    # Pass 1: provisional kernels with α = 1 to estimate ρ̃
+    for j, c in enumerate(centers):
+        r = np.linalg.norm((points4 - c["mu"]) / (c["sigma"] + 1e-8), axis=1)
+        g[:, j] = c["w"] * gelu(1.0 - r)
+
+    rho = np.sum(g, axis=1)
+    rho_tilde = rho / (np.max(rho) + rho_eps)
+
+    # Pass 2: re-evaluate kernels with α_eff(ρ̃)
+    g2 = np.zeros_like(g)
+    aeff = alpha_eff(rho_tilde)
+    for j, c in enumerate(centers):
+        r = np.linalg.norm((points4 - c["mu"]) / (c["sigma"] + 1e-8), axis=1)
+        g2[:, j] = c["w"] * gelu(aeff * (1.0 - r))
+
+    F = g2 @ V.T
+    rho = np.sum(g2, axis=1)
+    return rho, F
 
 # ----------------------------- colour utilities ------------------------------
 
