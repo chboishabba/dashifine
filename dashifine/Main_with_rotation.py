@@ -64,6 +64,41 @@ def rotate_plane(
     o: np.ndarray,
     a: np.ndarray,
     b: np.ndarray,
+    axis_perp: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rotate a 2D plane within 4D space around ``axis_perp``.
+
+    The basis vectors ``a`` and ``b`` spanning the plane are first
+    orthonormalised.  The component of ``axis_perp`` orthogonal to this plane
+    defines the rotation axis.  The plane is then rotated by ``angle_deg``
+    degrees around this axis.
+
+    Parameters
+    ----------
+    o : np.ndarray
+        Origin of the slice plane.
+    a, b : np.ndarray
+        Basis vectors spanning the plane.
+    axis_perp : np.ndarray
+        Vector defining the rotation axis (need not be normalised).
+    angle_deg : float
+        Rotation angle in degrees.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+        The unchanged origin and the rotated basis vectors ``a`` and ``b``.
+    """
+
+    a1, b1 = orthonormalize(a, b)
+    n = axis_perp.astype(np.float32)
+    n = n - (n @ a1) * a1 - (n @ b1) * b1
+    n /= np.linalg.norm(n) + 1e-8
+    theta = np.deg2rad(angle_deg).astype(np.float32)
+    a_rot = np.cos(theta) * a1 + np.sin(theta) * n
+    a_rot, b_new = orthonormalize(a_rot, b1)
+    return o, a_rot, b_new
     axis: np.ndarray,
     angle_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -230,6 +265,41 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     """Composite an RGB image against a background using the supplied alpha."""
     bg_arr = np.asarray(bg, dtype=np.float32)
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
+
+
+def class_weights_to_rgba(
+    class_weights: np.ndarray,
+    density: np.ndarray,
+    beta: float = 1.5,
+) -> np.ndarray:
+    """Map class weights and density to a composited RGB image.
+
+    The first three channels of ``class_weights`` are interpreted as CMY
+    contributions.  A zero ``K`` channel is appended and the result converted to
+    RGB.  Opacity is computed as ``density ** beta`` and the RGB image is
+    composited over a white background.
+
+    Parameters
+    ----------
+    class_weights:
+        Array of shape ``(H, W, C)`` with ``C >= 3`` containing per-class
+        weights.
+    density:
+        Array of shape ``(H, W)`` giving normalised density ``rho_tilde``.
+    beta:
+        Exponent controlling opacity from density.
+
+    Returns
+    -------
+    np.ndarray
+        Composited RGB image in ``[0, 1]``.
+    """
+
+    k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
+    weights = np.concatenate([class_weights[..., :3], k], axis=-1)
+    rgb = mix_cmy_to_rgb(weights)
+    alpha = density_to_alpha(density, beta)
+    return composite_rgb_alpha(rgb, alpha)
 
 
 def p_adic_address_to_hue_saturation(
@@ -462,6 +532,10 @@ def main(
     # Per-pixel temperature from score margins followed by softmax.
     tau = np.apply_along_axis(temperature_from_margin, -1, F)[..., None]
     class_weights = softmax(F / tau, axis=-1)
+    class_img = class_weights_to_rgba(class_weights, density, opacity_exp)
+    class_path = out_dir / "class_weights_composite.png"
+    plt.imsave(class_path, class_img)
+    paths["class_weights"] = str(class_path)
 
     return {"paths": paths, "density": density, "class_weights": class_weights}
 
