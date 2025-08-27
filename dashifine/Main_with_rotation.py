@@ -391,7 +391,7 @@ def rotate_plane(
 def sample_slice_points(
     H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray
 ) -> np.ndarray:
-    """Map a ``H×W`` pixel grid to 4‑D positions.
+    """Map a ``H x W`` pixel grid to 4‑D positions.
 
     The slice is centred on ``origin4`` with basis vectors ``a4`` and ``b4``
     spanning the pixel grid in the range ``[-1, 1]`` along each axis.
