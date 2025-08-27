@@ -5,7 +5,7 @@ from matplotlib.colors import hsv_to_rgb
 from typing import Tuple
 """Dashifine demo utilities.
 
-This module contains a tiny synthetic 4D field along with a number of helper
+This module contains a tiny synthetic 4-D field along with a number of helper
 functions used throughout the tests.  The implementation is intentionally small
 and is not meant to be a feature complete renderer – many of the operations are
 simple placeholders that nevertheless exercise the control flow of the real
@@ -89,7 +89,7 @@ class FieldCenters:
     """Lightweight container for field centre parameters."""
 
     mu: np.ndarray
-    """Parameterisation of anisotropic radial basis functions in 4D."""
+    """Parameterisation of anisotropic radial basis functions in 4-D."""
 
     mu: np.ndarray
     """Centre positions with shape ``(N, 4)``."""
@@ -203,12 +203,12 @@ def field_and_classes(
     V: np.ndarray,
     rho_eps: float = 1e-6,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Evaluate density and class scores for 4D ``points4``.
+    """Evaluate density and class scores for 4-D ``points4``.
 
     Parameters
     ----------
     points4:
-        Array of shape ``(HW, 4)`` containing 4D sample positions.
+        Array of shape ``(HW, 4)`` containing 4-D sample positions.
     centers:
         ``FieldCenters`` describing kernel centres, anisotropy and weights.
     V:
@@ -260,7 +260,7 @@ def rotate_plane(
     axis: np.ndarray,
     angle_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate ``(o, a, b)`` around ``axis`` using :func:`rotate_plane_4d`."""
+    """Rotate ``(o, a, b)`` around ``axis`` using :func:`rotate_plane_4-D`."""
 
     # Pass 1: provisional alpha=1 to estimate rho_tilde
     g = w[None, :] * gelu(1.0 - ri)
@@ -284,7 +284,7 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
     b = b - np.dot(a, b) * a
     b = b / (np.linalg.norm(b) + eps)
     return a, b
-def rotate_plane_4d(
+def rotate_plane_4-D(
     o: np.ndarray,
     a: np.ndarray,
     b: np.ndarray,
@@ -310,7 +310,7 @@ def rotate_plane_4d(
     ``angle_deg`` degrees while orthogonal components remain unchanged.
     """
 
-def rotate_plane_4d(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, v: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def rotate_plane_4-D(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, v: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``."""
     u, v = orthonormalize(u, v)
     ang = np.deg2rad(angle_deg)
@@ -335,7 +335,7 @@ def rotate_plane_4d(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, 
 
 def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Backward compatible wrapper using ``a`` and ``axis`` as rotation plane."""
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+    return rotate_plane_4-D(o, a, b, a, axis, angle_deg)
 
 
 def p_adic_address_to_hue_saturation(addresses: np.ndarray, depth: np.ndarray, base: int = 4) -> Tuple[np.ndarray, np.ndarray]:
@@ -372,20 +372,20 @@ def rotate_plane(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Backward-compatible wrapper using ``a`` and ``axis`` as rotation plane."""
 
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+    return rotate_plane_4-D(o, a, b, a, axis, angle_deg)
 
 
 # ---------------------------------------------------------------------------
 # Slice sampling and simple field evaluation
 # ---------------------------------------------------------------------------
-    """Backward compatible wrapper around :func:`rotate_plane_4d`.
+    """Backward compatible wrapper around :func:`rotate_plane_4-D`.
 
     The previous API expected a single rotation ``axis``.  We use ``a`` together
     with ``axis`` to define the rotation plane and delegate to
-    :func:`rotate_plane_4d`.
+    :func:`rotate_plane_4-D`.
     """
 
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+    return rotate_plane_4-D(o, a, b, a, axis, angle_deg)
 
 
 def sample_slice_points(
@@ -440,7 +440,7 @@ def field_and_classes(
     """Evaluate the toy field and class scores at 4-D positions."""
 
 def eval_field(points: np.ndarray) -> np.ndarray:
-    """Evaluate a simple CMYK-style field at 4D ``points``."""
+    """Evaluate a simple CMYK-style field at 4-D ``points``."""
 
     centers = np.eye(4, dtype=np.float32)
     dists = np.linalg.norm(points[..., None, :] - centers[None, None, :, :], axis=-1)
@@ -491,12 +491,12 @@ def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
     x_max = np.max(x, axis=axis, keepdims=True)
     e = np.exp(x - x_max)
     return e / np.sum(e, axis=axis, keepdims=True)
-    """Backward compatible wrapper around :func:`rotate_plane_4d`."""
+    """Backward compatible wrapper around :func:`rotate_plane_4-D`."""
 
 def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward compatible wrapper for :func:`rotate_plane_4d`."""
+    """Backward compatible wrapper for :func:`rotate_plane_4-D`."""
 
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+    return rotate_plane_4-D(o, a, b, a, axis, angle_deg)
 
 def mix_cmy_to_rgb(weights: np.ndarray) -> np.ndarray:
     """Mix CMY(K) weights to RGB."""
@@ -1002,7 +1002,7 @@ def main(
     # rotated slices
     for i in range(num_rotated):
         angle = float(i) * 360.0 / max(num_rotated, 1)
-        _o, _a, _b = rotate_plane_4d(o, a, b, u, v, angle)
+        _o, _a, _b = rotate_plane_4-D(o, a, b, u, v, angle)
         pts = sample_slice_image(res_hi, res_hi, _o, _a, _b)
         img = eval_field(pts)
         rot_path = out / f"slice_rot_{int(angle):+d}deg.png"
@@ -1120,7 +1120,7 @@ def main(
 
     for i in range(num_rotated):
         angle = float(i) * 360.0 / max(num_rotated, 1)
-        _o, a_r, b_r = rotate_plane_4d(o, a, b, u, v, angle)
+        _o, a_r, b_r = rotate_plane_4-D(o, a, b, u, v, angle)
         img = render_slice(res_hi, _o, a_r, b_r, centers, V)
         rot_path = out_dir / f"slice_rot_{int(angle):+d}deg.png"
         plt.imsave(rot_path, img)
