@@ -15,6 +15,46 @@ import hashlib
 import re
 from matplotlib.colors import hsv_to_rgb
 
+@dataclass
+class FieldCenters:
+    """Parameterisation of anisotropic radial basis functions in 4D."""
+
+    mu: np.ndarray
+    """Centre positions with shape ``(N, 4)``."""
+
+    sigma: np.ndarray
+    """Per-axis standard deviations for anisotropic falloff, shape ``(N, 4)``."""
+
+    w: np.ndarray
+    """Weights controlling each centre's contribution with shape ``(N,)``."""
+
+
+# Default centres used for examples and tests.  The ``z`` and ``w`` coordinates
+# are zero so that :func:`_field_density` can project them to the ``x``/``y``
+# plane without additional parameters.
+CENTERS = FieldCenters(
+    mu=np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0],
+            [0.8, 0.0, 0.0, 0.0],
+            [0.0, 0.8, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    ),
+    sigma=np.array(
+        [
+            [0.6, 0.6, 0.6, 0.6],
+            [0.4, 0.7, 0.6, 0.6],
+            [0.6, 0.4, 0.6, 0.6],
+        ],
+        dtype=np.float32,
+    ),
+    w=np.array([1.0, 0.8, 0.9], dtype=np.float32),
+)
+
+# Exponent for visibility normalisation
+BETA = 0.5
+
 # ------------------------------ basic primitives -----------------------------
 
 def gelu(x: np.ndarray) -> np.ndarray:
@@ -22,6 +62,37 @@ def gelu(x: np.ndarray) -> np.ndarray:
     return np.tanh(x)
 
 
+def field_and_classes(
+    points4: np.ndarray,
+    centers: FieldCenters,
+    V: np.ndarray,
+    rho_eps: float = 1e-6,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Evaluate density and class scores for 4D ``points4``.
+
+    Parameters
+    ----------
+    points4:
+        Array of shape ``(HW, 4)`` containing 4D sample positions.
+    centers:
+        ``FieldCenters`` describing kernel centres, anisotropy and weights.
+    V:
+        Class loading matrix of shape ``(C, N)``.
+    rho_eps:
+        Small constant to avoid division by zero when normalising ``rho``.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Total density ``rho`` with shape ``(HW,)`` and class scores ``F`` with
+        shape ``(HW, C)``.
+    """
+
+    mu, sigma, w = centers.mu, centers.sigma, centers.w
+
+    # Anisotropic distances r_i = ||(p - mu_i) / sigma_i||
+    diff = points4[:, None, :] - mu[None, :, :]  # (HW, N, 4)
+    ri = np.linalg.norm(diff / (sigma[None, :, :] + 1e-8), axis=-1)  # (HW, N)
 def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.ndarray, np.ndarray]:
     """Orthonormalise vectors ``a`` and ``b`` with Gram–Schmidt."""
     a = a.astype(np.float32)
@@ -41,9 +112,28 @@ def rotate_plane(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Rotate ``(o, a, b)`` around ``axis`` using :func:`rotate_plane_4d`."""
 
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+    # Pass 1: provisional alpha=1 to estimate rho_tilde
+    g = w[None, :] * gelu(1.0 - ri)
+    rho = np.sum(g, axis=1)
+    rho_tilde = rho / (np.max(rho) + rho_eps)
+
+    # Pass 2: mass-coupled sharpness via alpha_eff(rho_tilde)
+    alpha_eff = 1.0 / (1.0 + rho_tilde)  # (HW,)
+    g = w[None, :] * gelu(alpha_eff[:, None] * (1.0 - ri))
+
+    rho = np.sum(g, axis=1)
+    F = g @ V.T
+    return rho, F
 
 
+def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.ndarray, np.ndarray]:
+    """Orthonormalize vectors ``a`` and ``b`` with Gram-Schmidt."""
+    a = a.astype(np.float32)
+    b = b.astype(np.float32)
+    a = a / (np.linalg.norm(a) + eps)
+    b = b - np.dot(a, b) * a
+    b = b / (np.linalg.norm(b) + eps)
+    return a, b
 def rotate_plane_4d(
     o: np.ndarray,
     a: np.ndarray,
@@ -74,6 +164,14 @@ def rotate_plane_4d(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, 
     return _rotate(o), _rotate(a), _rotate(b)
 
 
+def rotate_plane(
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Backward compatible wrapper around :func:`rotate_plane_4d`."""
 
 def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Backward compatible wrapper for :func:`rotate_plane_4d`."""
@@ -186,11 +284,12 @@ def class_weights_to_rgba(
     """
 
 
+
 def class_weights_to_rgba(class_weights: np.ndarray, density: np.ndarray, beta: float = 1.5) -> np.ndarray:
     """Map class weights and density to a composited RGB image."""
     k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
-    weights = np.concatenate([class_weights[..., :3], k], axis=-1)
-    rgb = mix_cmy_to_rgb(weights)
+    cmyk = np.concatenate([class_weights[..., :3], k], axis=-1)
+    rgb = mix_cmy_to_rgb(cmyk)
     alpha = density_to_alpha(density, beta)
     return composite_rgb_alpha(rgb, alpha)
 
@@ -268,8 +367,8 @@ def _field_density(
     pos = np.stack([X, Y], axis=-1)  # (res, res, 2)
 
     # Compute anisotropic distances r_i for each centre
-    diff = pos[None, ...] - mu[:, None, None, :]  # (N, res, res, 2)
-    ri = np.linalg.norm(diff / sigma[:, None, None, :], axis=-1)  # (N, res, res)
+    diff = pos[None, ...] - mu[:, None, None, :2]  # (N, res, res, 2)
+    ri = np.linalg.norm(diff / sigma[:, None, None, :2], axis=-1)  # (N, res, res)
 
     # Initial kernel contributions and normalised density
     g = w[:, None, None] * gelu(1.0 - ri)
