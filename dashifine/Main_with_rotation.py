@@ -86,6 +86,23 @@ def rotate_plane_4d(
     return _rotate(o), _rotate(a), _rotate(b)
 
 
+def rotate_plane(
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    axis_perp: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rotate slice vectors using ``rotate_plane_4d``.
+
+    The slice ``(o, a, b)`` is rotated in the plane spanned by ``a`` and
+    ``axis_perp``.  This thin wrapper exists for backwards compatibility with
+    earlier APIs while delegating all work to :func:`rotate_plane_4d`.
+    """
+
+    return rotate_plane_4d(o, a, b, a, axis_perp, angle_deg)
+
+
 def sample_slice_image(o: np.ndarray, a: np.ndarray, b: np.ndarray, res: int) -> np.ndarray:
     """Map pixel coordinates of a slice image to 4D positions.
 
@@ -341,7 +358,7 @@ def main(
 
     paths = {"origin": str(origin_path), "coarse_density": str(density_path)}
 
-    # Generate rotated slices (placeholder using 90-degree rotations)
+    # Generate rotated slices using 4D plane rotations
     o = np.zeros(4, dtype=np.float32)
     a = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
     b = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
@@ -356,15 +373,13 @@ def main(
     origin_img = eval_field(origin_points)
     plt.imsave(origin_path, origin_img)
 
+    # Define rotation plane and generate rotated slices
+    rot_u = a + b
+    rot_v = axis
+
     for i in range(num_rotated):
         angle = float(i) * 360.0 / max(num_rotated, 1)
-        _o, _a, _b = rotate_plane(o, a, b, axis, angle)
-        img_alpha = _field_density(res_hi)
-        img = np.dstack([img_alpha] * 3)
-        rgb_rot = np.rot90(rgb, k=i % 4, axes=(0, 1))
-        alpha_rot = np.rot90(alpha, k=i % 4, axes=(0, 1))
-        img = composite_rgb_alpha(rgb_rot, alpha_rot)
-        _o, _a, _b = rotate_plane_4d(o, a, b, a, axis, angle)
+        _o, _a, _b = rotate_plane_4d(o, a, b, rot_u, rot_v, angle)
         points = sample_slice_image(_o, _a, _b, res_hi)
         img = eval_field(points)
         rot_path = out_dir / f"slice_rot_{int(angle):+d}deg.png"
