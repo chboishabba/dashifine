@@ -1,57 +1,52 @@
+"""Dashifine slice renderer with simple 4‑D geometry utilities.
+
+This module exposes a small set of functions that are exercised by the unit
+tests.  Only a toy procedural field is implemented – enough to verify that the
+geometry helpers behave correctly and that successive rotations lead to
+distinct images.
+"""
+
+from __future__ import annotations
+
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Iterable, List, Tuple
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 import numpy as np
 
-@dataclass
-class FieldCenters:
-    """Parameterisation of a small synthetic field."""
 
-    mu: np.ndarray
-    """Centre positions in the x/y plane with shape ``(N, 2)``."""
-
-    sigma: np.ndarray
-    """Per-axis standard deviations for anisotropic falloff, shape ``(N, 2)``."""
-
-    w: np.ndarray
-    """Weights controlling each centre's contribution with shape ``(N,)``."""
-
-
-CENTERS = FieldCenters(
-    mu=np.array(
-        [
-            [-0.5, -0.5],
-            [0.5, -0.3],
-            [0.0, 0.6],
-        ],
-        dtype=np.float32,
-    ),
-    sigma=np.array(
-        [
-            [0.3, 0.2],
-            [0.25, 0.35],
-            [0.2, 0.25],
-        ],
-        dtype=np.float32,
-    ),
-    w=np.array([1.0, 0.8, 1.2], dtype=np.float32),
-)
-
-# Exponent for visibility normalisation
-BETA = 0.5
+# ---------------------------------------------------------------------------
+# Basic maths helpers
 
 
 def gelu(x: np.ndarray) -> np.ndarray:
-    """Simple odd activation used for testing."""
+    """Simple odd activation used in tests."""
+
     return np.tanh(x)
 
 
+def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
+    """Numerically stable softmax."""
+
+    x_max = np.max(x, axis=axis, keepdims=True)
+    e = np.exp(x - x_max)
+    return e / np.sum(e, axis=axis, keepdims=True)
+
+
+def temperature_from_margin(F_i: np.ndarray) -> float:
+    """Temperature schedule used for class weighting."""
+
+    sorted_scores = np.sort(F_i)
+    margin = sorted_scores[-1] - sorted_scores[-2]
+    return 1.0 + np.exp(-margin)
+
+
 def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.ndarray, np.ndarray]:
-    """Orthonormalize vectors ``a`` and ``b`` with Gram-Schmidt."""
+    """Orthonormalise ``a`` and ``b`` using Gram–Schmidt."""
+
     a = a.astype(np.float32)
     b = b.astype(np.float32)
     a = a / (np.linalg.norm(a) + eps)
@@ -60,61 +55,8 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
     return a, b
 
 
-def rotate_plane(
-    o: np.ndarray,
-    a: np.ndarray,
-    b: np.ndarray,
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Placeholder plane rotation that leaves inputs unchanged."""
-
-    return o, a, b
-    axis_perp: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate a 2D plane within 4D space around ``axis_perp``.
-
-    The basis vectors ``a`` and ``b`` spanning the plane are first
-    orthonormalised.  The component of ``axis_perp`` orthogonal to this plane
-    defines the rotation axis.  The plane is then rotated by ``angle_deg``
-    degrees around this axis.
-
-    Parameters
-    ----------
-    o : np.ndarray
-        Origin of the slice plane.
-    a, b : np.ndarray
-        Basis vectors spanning the plane.
-    axis_perp : np.ndarray
-        Vector defining the rotation axis (need not be normalised).
-    angle_deg : float
-        Rotation angle in degrees.
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray, np.ndarray]
-        The unchanged origin and the rotated basis vectors ``a`` and ``b``.
-    """
-
-    a1, b1 = orthonormalize(a, b)
-    n = axis_perp.astype(np.float32)
-    n = n - (n @ a1) * a1 - (n @ b1) * b1
-    n /= np.linalg.norm(n) + 1e-8
-    theta = np.deg2rad(angle_deg).astype(np.float32)
-    a_rot = np.cos(theta) * a1 + np.sin(theta) * n
-    a_rot, b_new = orthonormalize(a_rot, b1)
-    return o, a_rot, b_new
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward compatible wrapper for :func:`rotate_plane_4d`.
-
-    The rotation plane is defined by ``a`` and ``axis``.  This helper exists
-    only so older code and tests expecting ``rotate_plane`` continue to work.
-    """
-
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+# ---------------------------------------------------------------------------
+# 4‑D rotation and sampling utilities
 
 
 def rotate_plane_4d(
@@ -127,143 +69,112 @@ def rotate_plane_4d(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``.
 
-    The plane is defined by two (not necessarily normalised) vectors ``u`` and
-    ``v``.  Any component of the inputs lying in this plane is rotated by
-    ``angle_deg`` degrees while the orthogonal component is left unchanged.
+    ``u`` and ``v`` need not be normalised; they simply define the rotation
+    plane.  Components of the inputs that lie in this plane are rotated by
+    ``angle_deg`` degrees while orthogonal components remain unchanged.
     """
-    u, v = orthonormalize(u, v)
-    angle = np.deg2rad(angle_deg)
 
-    def _rotate(x: np.ndarray) -> np.ndarray:
+    u, v = orthonormalize(u, v)
+    ang = np.deg2rad(angle_deg)
+
+    def _rot(x: np.ndarray) -> np.ndarray:
         xu = np.dot(x, u)
         xv = np.dot(x, v)
-        # Component orthogonal to the rotation plane remains unchanged
         x_perp = x - xu * u - xv * v
-        xr = xu * np.cos(angle) - xv * np.sin(angle)
-        yr = xu * np.sin(angle) + xv * np.cos(angle)
+        xr = xu * np.cos(ang) - xv * np.sin(ang)
+        yr = xu * np.sin(ang) + xv * np.cos(ang)
         return x_perp + xr * u + yr * v
 
-    return _rotate(o), _rotate(a), _rotate(b)
+    return _rot(o), _rot(a), _rot(b)
 
 
 def rotate_plane(
-    o: np.ndarray,
-    a: np.ndarray,
-    b: np.ndarray,
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward-compatible wrapper around :func:`rotate_plane_4d`.
-
-    The previous API expected a single rotation ``axis``.  We map this to the
-    4D rotation utility by using ``a`` and ``axis`` as the spanning vectors.
-    This is a minimal shim to satisfy tests."""
-
-    axis_perp: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate slice vectors using ``rotate_plane_4d``.
-
-    The slice ``(o, a, b)`` is rotated in the plane spanned by ``a`` and
-    ``axis_perp``.  This thin wrapper exists for backwards compatibility with
-    earlier APIs while delegating all work to :func:`rotate_plane_4d`.
-    """
-
-    return rotate_plane_4d(o, a, b, a, axis_perp, angle_deg)
-
-    axis: np.ndarray,
-    angle_deg: float,
+    o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Backward compatible wrapper around :func:`rotate_plane_4d`.
 
-    The wrapper rotates the slice plane spanned by ``a`` and ``b`` around the
-    provided ``axis`` by ``angle_deg`` degrees.  It delegates to
-    ``rotate_plane_4d`` by using ``a`` and ``axis`` as the rotation plane.
+    The previous API expected a single rotation ``axis``.  We use ``a`` together
+    with ``axis`` to define the rotation plane and delegate to
+    :func:`rotate_plane_4d`.
     """
 
     return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
 
-def sample_slice_image(o: np.ndarray, a: np.ndarray, b: np.ndarray, res: int) -> np.ndarray:
-    """Map pixel coordinates of a slice image to 4D positions.
+def sample_slice_points(
+    H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray
+) -> np.ndarray:
+    """Map a ``H×W`` pixel grid to 4‑D positions.
 
-    Parameters
-    ----------
-    o : np.ndarray
-        Slice origin in 4D.
-    a, b : np.ndarray
-        Basis vectors spanning the slice plane.
-    res : int
-        Resolution of the output image (assumed square).
-
-    Returns
-    -------
-    np.ndarray
-        Array of shape ``(res, res, 4)`` containing the 4D positions of each
-        pixel centre.
-    """
-    xs = np.linspace(-0.5, 0.5, res, endpoint=False, dtype=np.float32) + 0.5 / res
-    ys = np.linspace(-0.5, 0.5, res, endpoint=False, dtype=np.float32) + 0.5 / res
-    grid_x, grid_y = np.meshgrid(xs, ys, indexing="xy")
-    points = o + grid_x[..., None] * a + grid_y[..., None] * b
-    return points.astype(np.float32)
-
-
-def eval_field(points: np.ndarray) -> np.ndarray:
-    """Evaluate a simple CMYK-style field at 4D ``points``.
-
-    Distances to the four canonical basis vectors are converted to CMYK weights
-    via ``gelu`` and then mapped to RGB for visualisation.
-    """
-    centers = np.eye(4, dtype=np.float32)
-    dists = np.linalg.norm(points[..., None, :] - centers[None, None, :, :], axis=-1)
-    cmyk = gelu(1.0 - dists)
-    rgb = 1.0 - cmyk[..., :3]
-    return np.clip(rgb, 0.0, 1.0)
-
-
-def temperature_from_margin(F_i: np.ndarray) -> float:
-    """Compute a temperature from the score margin of a single pixel.
-
-    Parameters
-    ----------
-    F_i:
-        One-dimensional array of class scores for a pixel.
-
-    Returns
-    -------
-    float
-        Temperature ``tau_i = 1 + exp(-margin)`` where ``margin`` is the gap
-        between the highest and second highest score in ``F_i``. A small margin
-        therefore produces a high temperature and yields a softer softmax
-        distribution.
+    The slice is centred on ``origin4`` with basis vectors ``a4`` and ``b4``
+    spanning the pixel grid in the range ``[-1, 1]`` along each axis.
     """
 
-    sorted_scores = np.sort(F_i)
-    margin = sorted_scores[-1] - sorted_scores[-2]
-    return 1.0 + np.exp(-margin)
+    xs = np.linspace(-1.0, 1.0, W, dtype=np.float32)
+    ys = np.linspace(-1.0, 1.0, H, dtype=np.float32)
+    grid_x, grid_y = np.meshgrid(xs, ys)
+    pts = (
+        origin4[None, :]
+        + grid_x.reshape(-1, 1) * a4[None, :]
+        + grid_y.reshape(-1, 1) * b4[None, :]
+    )
+    return pts
 
 
-def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
-    """Numerically stable softmax."""
-    x_max = np.max(x, axis=axis, keepdims=True)
-    e = np.exp(x - x_max)
-    return e / np.sum(e, axis=axis, keepdims=True)
+# ---------------------------------------------------------------------------
+# Field evaluation
+
+
+@dataclass
+class Center:
+    mu: np.ndarray
+    sigma: np.ndarray
+    w: float
+
+
+def alpha_eff(
+    rho_tilde: np.ndarray, a_min: float = 0.6, a_max: float = 2.2, lam: float = 1.0, eta: float = 0.7
+) -> np.ndarray:
+    t = np.clip(rho_tilde, 0.0, 1.0) ** eta
+    return (1 - lam * t) * a_min + lam * t * a_max
+
+
+def field_and_classes(
+    points4: np.ndarray, centers: Iterable[Center], V: np.ndarray, rho_eps: float = 1e-6
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Evaluate the toy field and class scores at 4‑D positions."""
+
+    pts = points4.astype(np.float32)
+    centers_list = list(centers)
+    N = len(centers_list)
+    HW = pts.shape[0]
+
+    g = np.zeros((HW, N), dtype=np.float32)
+    for j, c in enumerate(centers_list):
+        r = np.linalg.norm((pts - c.mu) / (c.sigma + 1e-8), axis=1)
+        g[:, j] = c.w * gelu(1.0 - r)
+    g = np.maximum(g, 0.0)
+
+    rho = np.sum(g, axis=1)
+    rho_tilde = rho / (np.max(rho) + rho_eps)
+
+    g2 = np.zeros_like(g)
+    a_eff = alpha_eff(rho_tilde)
+    for j, c in enumerate(centers_list):
+        r = np.linalg.norm((pts - c.mu) / (c.sigma + 1e-8), axis=1)
+        g2[:, j] = c.w * gelu(a_eff * (1.0 - r))
+    g2 = np.maximum(g2, 0.0)
+
+    F = g2 @ V.T
+    rho_final = np.sum(g2, axis=1)
+    return rho_final, F
+
+
+# ---------------------------------------------------------------------------
+# Colour utilities
 
 
 def mix_cmy_to_rgb(weights: np.ndarray) -> np.ndarray:
-    """Mix the first three channels (CMY) and convert to RGB.
-
-    Parameters
-    ----------
-    weights:
-        Array of shape ``(..., 4)`` containing CMYK weights in ``[0, 1]``.
-
-    Returns
-    -------
-    np.ndarray
-        RGB image in ``[0, 1]``.
-    """
     cmy = np.clip(weights[..., :3], 0.0, 1.0)
     k = np.clip(weights[..., 3:4], 0.0, 1.0)
     rgb = (1.0 - cmy) * (1.0 - k)
@@ -271,104 +182,30 @@ def mix_cmy_to_rgb(weights: np.ndarray) -> np.ndarray:
 
 
 def density_to_alpha(density: np.ndarray, beta: float = 1.5) -> np.ndarray:
-    """Map density values to opacity using ``density ** beta``."""
     density = np.clip(density, 0.0, 1.0)
     return np.power(density, beta)
 
 
-def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, float, float] = (1.0, 1.0, 1.0)) -> np.ndarray:
-    """Composite an RGB image against a background using the supplied alpha."""
+def composite_rgb_alpha(
+    rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+) -> np.ndarray:
     bg_arr = np.asarray(bg, dtype=np.float32)
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
 
 
-def lineage_hue_from_address(addr_digits: str) -> float:
-    """Placeholder lineage hue mapping.
-
-    Parameters
-    ----------
-    addr_digits:
-        String representation of the p-adic address.
-
-    Returns
-    -------
-    float
-        Hue value in ``[0, 1]``; stub returns ``0.0``.
-    """
-
-    return 0.0
-
-
-def eigen_palette(weights: np.ndarray) -> np.ndarray:
-    """Placeholder eigen palette mapping to grayscale.
-
-    Parameters
-    ----------
-    weights:
-        Array of shape ``(..., C)`` containing class weights."""
-
 def class_weights_to_rgba(
-    class_weights: np.ndarray,
-    density: np.ndarray,
-    beta: float = 1.5,
+    class_weights: np.ndarray, density: np.ndarray, beta: float = 1.5
 ) -> np.ndarray:
-    """Map class weights and density to a composited RGB image.
-
-    The first three channels of ``class_weights`` are interpreted as CMY
-    contributions.  A zero ``K`` channel is appended and the result converted to
-    RGB.  Opacity is computed as ``density ** beta`` and the RGB image is
-    composited over a white background.
-
-    Parameters
-    ----------
-    class_weights:
-        Array of shape ``(H, W, C)`` with ``C >= 3`` containing per-class
-        weights.
-    density:
-        Array of shape ``(H, W)`` giving normalised density ``rho_tilde``.
-    beta:
-        Exponent controlling opacity from density.
-
-    Returns
-    -------
-    np.ndarray
-        RGB image in ``[0, 1]`` where all channels equal the top class weight.
-    """
-
-    top = np.max(weights, axis=-1, keepdims=True)
-    rgb = np.repeat(top, 3, axis=-1)
-    return np.clip(rgb, 0.0, 1.0)
-
-   """     Composited RGB image in ``[0, 1]``.
-    
-
     k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
     weights = np.concatenate([class_weights[..., :3], k], axis=-1)
     rgb = mix_cmy_to_rgb(weights)
     alpha = density_to_alpha(density, beta)
-    return composite_rgb_alpha(rgb, alpha)"""
+    return composite_rgb_alpha(rgb, alpha)
 
 
 def p_adic_address_to_hue_saturation(
     addresses: np.ndarray, depth: np.ndarray, base: int = 2
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Map p-adic addresses to hue and depth to saturation.
-
-    Parameters
-    ----------
-    addresses:
-        Integer array giving the p-adic address for each pixel.
-    depth:
-        Float array giving the depth for each pixel.
-    base:
-        Base ``p`` of the p-adic numbers.
-
-    Returns
-    -------
-    hue, saturation : tuple[np.ndarray, np.ndarray]
-        Normalised hue and saturation arrays in ``[0, 1]``.
-    """
-
     addresses = addresses.astype(np.int64)
     depth = depth.astype(np.float32)
     if addresses.size == 0:
@@ -396,231 +233,128 @@ def render(
     palette: str = "gray",
     base: int = 2,
 ) -> np.ndarray:
-    """Render an RGB image from ``addresses`` and ``depth``.
-
-    ``addresses`` and ``depth`` supply per-pixel p-adic addresses and depth
-    values respectively. When ``palette='p_adic'`` the addresses determine the
-    hue and the depth controls saturation. Other palettes fall back to a simple
-    grayscale mapping of ``depth``.
-
-    Returns
-    -------
-    np.ndarray
-        RGB image with values in ``[0, 1]``.
-    """
-
     if palette == "p_adic":
-        hue, sat = p_adic_address_to_hue_saturation(addresses, depth, base)
+        hue, sat = p_adic_address_to_hue_saturation(addresses, depth, base=base)
         hsv = np.stack([hue, sat, np.ones_like(hue)], axis=-1)
         return hsv_to_rgb(hsv)
 
-    value = depth / (np.max(depth) + 1e-8) if np.any(depth) else np.zeros_like(depth)
-    return np.stack([value, value, value], axis=-1)
+    # default grayscale based on normalised depth
+    depth_n = depth / (np.max(depth) + 1e-8) if np.any(depth) else depth
+    return np.stack([depth_n] * 3, axis=-1)
 
 
-def _field_density(
+# ---------------------------------------------------------------------------
+# Rendering pipeline
+
+
+def _demo_centers() -> Tuple[List[Center], np.ndarray]:
+    mus = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0],
+            [0.8, 0.2, 0.5, 0.0],
+            [-0.4, 0.8, -0.5, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    sigmas = np.full_like(mus, 1.0, dtype=np.float32)
+    weights = np.array([1.0, 0.9, 0.8], dtype=np.float32)
+
+    centers: List[Center] = []
+    for mu, sigma, w in zip(mus, sigmas, weights):
+        centers.append(Center(mu=mu, sigma=sigma, w=float(w)))
+
+    V = np.eye(3, len(centers), dtype=np.float32)  # map centres to CMY
+    return centers, V
+
+
+def render_slice(
     res: int,
-    *,
-    centers: FieldCenters = CENTERS,
-    beta: float = BETA,
+    origin4: np.ndarray,
+    a4: np.ndarray,
+    b4: np.ndarray,
+    centers: List[Center],
+    V: np.ndarray,
 ) -> np.ndarray:
-    """Evaluate the synthetic field on a ``res``×``res`` grid.
-
-    Parameters
-    ----------
-    res:
-        Resolution of the square grid to evaluate.
-    centers:
-        ``FieldCenters`` describing positions, falloff and weights of kernels.
-    beta:
-        Exponent for visibility normalisation.
-
-    Returns
-    -------
-    np.ndarray
-        Visibility ``alpha_vis`` derived from the normalised density.
-    """
-
-    mu, sigma, w = centers.mu, centers.sigma, centers.w
-
-    # Generate grid coordinates in [-1, 1]
-    lin = np.linspace(-1.0, 1.0, res, dtype=np.float32)
-    X, Y = np.meshgrid(lin, lin, indexing="xy")
-    pos = np.stack([X, Y], axis=-1)  # (res, res, 2)
-
-    # Compute anisotropic distances r_i for each centre
-    diff = pos[None, ...] - mu[:, None, None, :]  # (N, res, res, 2)
-    ri = np.linalg.norm(diff / sigma[:, None, None, :], axis=-1)  # (N, res, res)
-
-    # Initial kernel contributions and normalised density
-    g = w[:, None, None] * gelu(1.0 - ri)
-    rho = g.sum(axis=0)
-    rho_tilde = (rho - rho.min()) / (rho.max() - rho.min() + 1e-8)
-
-    # Mass-coupling via effective alpha
-    alpha_eff = 1.0 / (1.0 + rho_tilde)
-    g = w[:, None, None] * gelu(alpha_eff * (1.0 - ri))
-    rho = g.sum(axis=0)
-
-    # Normalise and compute visibility alpha
-    rho_tilde = (rho - rho.min()) / (rho.max() - rho.min() + 1e-8)
-    alpha_vis = rho_tilde ** beta
-    return alpha_vis
+    pts = sample_slice_points(res, res, origin4, a4, b4)
+    rho, F = field_and_classes(pts, centers, V)
+    weights = np.zeros_like(F)
+    for i in range(F.shape[0]):
+        tau = temperature_from_margin(F[i])
+        weights[i] = softmax(F[i] / tau, axis=0)
+    rgb = class_weights_to_rgba(
+        weights.reshape(res, res, -1), rho.reshape(res, res)
+    )
+    return rgb
 
 
 def main(
     output_dir: str | Path,
-    res_hi: int = 64,
-    res_coarse: int = 16,
-    num_rotated: int = 1,
+    res_hi: int = 128,
+    res_coarse: int = 32,
+    num_rotated: int = 4,
     z0_steps: int = 1,
     w0_steps: int = 1,
     slopes: np.ndarray | None = None,
-    opacity_exp: float = 1.5,
-    palette: str = "cmy",
-    centers: FieldCenters = CENTERS,
-    beta: float = BETA,
 ) -> Dict[str, Any]:
-    """Generate synthetic slices and return their file paths."""
+    """Render a small set of slices and return their file paths."""
+
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    density = _field_density(res_coarse, centers=centers, beta=beta)
+    density = np.zeros((res_coarse, res_coarse), dtype=np.float32)
     density_path = out_dir / "coarse_density_map.png"
     plt.imsave(density_path, density, cmap="gray")
 
-    origin_alpha = _field_density(res_hi, centers=centers, beta=beta)
-    origin = np.dstack([origin_alpha] * 3)
-    
-    """Generate example slices and return their file paths"""
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    # Generate coarse density for reference
-    x = np.linspace(0.0, 1.0, res_coarse, dtype=np.float32)
-    y = np.linspace(0.0, 1.0, res_coarse, dtype=np.float32)
-    Xc, Yc = np.meshgrid(x, y)
-    weights_coarse = np.stack([Xc, Yc, 1.0 - Xc, 0.5 * np.ones_like(Xc)], axis=-1)
-    density = weights_coarse.mean(axis=-1)
-    density_path = out_dir / "coarse_density_map.png"
-    plt.imsave(density_path, density, cmap="gray")
-
-    # High-resolution origin slice
-    xh = np.linspace(0.0, 1.0, res_hi, dtype=np.float32)
-    yh = np.linspace(0.0, 1.0, res_hi, dtype=np.float32)
-    Xh, Yh = np.meshgrid(xh, yh)
-    weights_hi = np.stack([Xh, Yh, 1.0 - Xh, 0.5 * np.ones_like(Xh)], axis=-1)
-    if palette == "cmy":
-        rgb = mix_cmy_to_rgb(weights_hi)
-    elif palette == "eigen":
-        rgb = eigen_palette(weights_hi)
-    elif palette == "lineage":
-        rgb = eigen_palette(weights_hi)
-    else:
-        rgb = mix_cmy_to_rgb(weights_hi)
-    density_hi = weights_hi.mean(axis=-1)
-    alpha = density_to_alpha(density_hi, opacity_exp)
-    origin = composite_rgb_alpha(rgb, alpha)
-    
-    """Generate placeholder slices and basic rendering data.
-
-    Besides writing placeholder images to ``output_dir`` this function now
-    computes per-pixel class weights using a randomly initialized class loading
-    matrix.  The returned dictionary therefore includes the generated paths as
-    well as ``density`` and ``class_weights`` arrays for further processing.    """
-
-    out_dir = Path(output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    density_path = out_dir / "coarse_density_map.png"
-    origin_path = out_dir / "slice_origin.png"
-
-    paths = {"origin": str(origin_path), "coarse_density": str(density_path)}
-
-    # Generate rotated slices using 4D plane rotations
     o = np.zeros(4, dtype=np.float32)
     a = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
     b = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
-    axis = np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32)
+    a, b = orthonormalize(a, b)
 
-    # Generate origin and coarse density maps using the field evaluation
-    coarse_points = sample_slice_image(o, a, b, res_coarse)
-    density = np.mean(eval_field(coarse_points), axis=-1)
-    plt.imsave(density_path, density, cmap="gray")
+    # Rotation plane (x-z)
+    u = a.copy()
+    v = np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32)
+    u, v = orthonormalize(u, v)
 
-    origin_points = sample_slice_image(o, a, b, res_hi)
-    origin_img = eval_field(origin_points)
-    plt.imsave(origin_path, origin_img)
+    centers, V = _demo_centers()
 
-    # Define rotation plane and generate rotated slices
-    rot_u = a + b
-    rot_v = axis
+    paths: Dict[str, str] = {}
+
+    img0 = render_slice(res_hi, o, a, b, centers, V)
+    origin_path = out_dir / "slice_origin.png"
+    plt.imsave(origin_path, img0)
+    paths["origin"] = str(origin_path)
 
     for i in range(num_rotated):
         angle = float(i) * 360.0 / max(num_rotated, 1)
-        _o, _a, _b = rotate_plane_4d(o, a, b, rot_u, rot_v, angle)
-        img_alpha = _field_density(res_hi, centers=centers, beta=beta)
-        img = np.dstack([img_alpha] * 3)
-        rgb_rot = np.rot90(rgb, k=i % 4, axes=(0, 1))
-        alpha_rot = np.rot90(alpha, k=i % 4, axes=(0, 1))
-        img = composite_rgb_alpha(rgb_rot, alpha_rot)
-
-        _o, _a, _b = rotate_plane_4d(o, a, b, a, axis, angle)
-        points = sample_slice_image(_o, _a, _b, res_hi)
-        img = eval_field(points)
+        _o, a_r, b_r = rotate_plane_4d(o, a, b, u, v, angle)
+        img = render_slice(res_hi, _o, a_r, b_r, centers, V)
         rot_path = out_dir / f"slice_rot_{int(angle):+d}deg.png"
         plt.imsave(rot_path, img)
         paths[f"rot_{angle:+.1f}"] = str(rot_path)
 
-    # ------------------------------------------------------------------
-    # Simple class weight computation for each coarse pixel
-    # ------------------------------------------------------------------
-    xs, ys = np.meshgrid(
-        np.linspace(-1.0, 1.0, res_coarse, dtype=np.float32),
-        np.linspace(-1.0, 1.0, res_coarse, dtype=np.float32),
-        indexing="ij",
-    )
-    g = np.stack([xs, ys], axis=-1).reshape(-1, 2)
-    # Random class loading matrix ``V``
-    num_classes = 3
-    V = np.random.randn(num_classes, g.shape[-1]).astype(np.float32)
-    F = g @ V.T
-    F = F.reshape(res_coarse, res_coarse, num_classes)
-
-    # Per-pixel temperature from score margins followed by softmax.
-    tau = np.apply_along_axis(temperature_from_margin, -1, F)[..., None]
-    class_weights = softmax(F / tau, axis=-1)
-    class_img = class_weights_to_rgba(class_weights, density, opacity_exp)
-    class_path = out_dir / "class_weights_composite.png"
-    plt.imsave(class_path, class_img)
-    paths["class_weights"] = str(class_path)
-
-    return {"paths": paths, "density": density, "class_weights": class_weights}
+    paths["coarse_density"] = str(density_path)
+    return {"paths": paths}
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate placeholder slices")
+    parser = argparse.ArgumentParser(description="Dashifine slice renderer")
     parser.add_argument("--output_dir", required=True)
-    parser.add_argument("--res_hi", type=int, default=64)
-    parser.add_argument("--res_coarse", type=int, default=16)
-    parser.add_argument("--num_rotated", type=int, default=1)
-    parser.add_argument("--opacity_exp", type=float, default=1.5)
-    parser.add_argument(
-        "--palette",
-        type=str,
-        default="cmy",
-        choices=["cmy", "lineage", "eigen"],
-        help="Colour palette for slice rendering",
-    )
+    parser.add_argument("--res_hi", type=int, default=128)
+    parser.add_argument("--res_coarse", type=int, default=32)
+    parser.add_argument("--num_rotated", type=int, default=4)
+    parser.add_argument("--z0_steps", type=int, default=1)
+    parser.add_argument("--w0_steps", type=int, default=1)
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - manual execution only
     args = _parse_args()
     main(
         output_dir=args.output_dir,
         res_hi=args.res_hi,
         res_coarse=args.res_coarse,
         num_rotated=args.num_rotated,
-        opacity_exp=args.opacity_exp,
-        palette=args.palette,
+        z0_steps=args.z0_steps,
+        w0_steps=args.w0_steps,
     )
+
