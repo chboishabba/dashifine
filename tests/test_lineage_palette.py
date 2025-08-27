@@ -30,7 +30,18 @@ def test_render_slice_lineage_palette_matches_hsv_mapping():
     centers = [{"mu": origin, "sigma": np.ones(4, dtype=np.float32), "w": 1.0}]
     V = np.eye(1, dtype=np.float32)
 
-    rgb, _ = render_slice(H, W, origin, a, b, centers, V, palette="lineage")
+    rgb = render_slice(
+        H,
+        W,
+        origin,
+        a,
+        b,
+        centers,
+        V,
+        palette="lineage",
+        bg=np.zeros(3, dtype=np.float32),
+        beta=0.0,
+    )
 
     pts = sample_slice_points(H, W, origin, a, b)
     rho, F = field_and_classes(pts, centers, V)
