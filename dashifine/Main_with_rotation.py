@@ -7,7 +7,7 @@ from typing import Tuple
 
 This module contains a tiny synthetic 4-D field along with a number of helper
 functions used throughout the tests.  The implementation is intentionally small
-and is not meant to be a feature complete renderer – many of the operations are
+and is not meant to be a feature complete renderer - many of the operations are
 simple placeholders that nevertheless exercise the control flow of the real
 project.
 
@@ -18,7 +18,7 @@ showcasing the different colour palettes.
 """Dashifine slice renderer with simple 4-D geometry utilities.
 
 This module exposes a small set of functions that are exercised by the unit
-tests.  Only a toy procedural field is implemented – enough to verify that the
+tests.  Only a toy procedural field is implemented - enough to verify that the
 geometry helpers behave correctly and that successive rotations lead to
 distinct images.
 """
@@ -230,12 +230,12 @@ def field_and_classes(
     ri = np.linalg.norm(diff / (sigma[None, :, :] + 1e-8), axis=-1)  # (HW, N)
 def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.ndarray, np.ndarray]:
     """Return orthonormal basis spanning ``a`` and ``b``."""
-    """Orthonormalise vectors ``a`` and ``b`` using Gram–Schmidt."""
+    """Orthonormalise vectors ``a`` and ``b`` using Gram-Schmidt."""
 
 
-    """Orthonormalise ``a`` and ``b`` using Gram–Schmidt."""
+    """Orthonormalise ``a`` and ``b`` using Gram-Schmidt."""
 
-    """Orthonormalise vectors ``a`` and ``b`` with Gram–Schmidt."""
+    """Orthonormalise vectors ``a`` and ``b`` with Gram-Schmidt."""
 
     a = a.astype(np.float32)
     b = b.astype(np.float32)
@@ -638,7 +638,7 @@ def lineage_hue_from_address(addr: str) -> float:
     """Return a deterministic hue in ``[0, 1]`` for ``addr``.
 
     The current implementation hashes the address string and uses the hash to
-    generate a stable hue.  The exact mapping is unimportant for the tests – it
+    generate a stable hue.  The exact mapping is unimportant for the tests - it
     merely needs to be deterministic.
     """
 
