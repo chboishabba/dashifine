@@ -194,6 +194,7 @@ def main(
     res_hi: int = 128,
     res_coarse: int = 32,   # still used for a quick diagnostic map
     num_rotated: int = 4,
+    num_time: int = 1,
     palette: str = "cmy",
 ) -> Dict[str, Any]:
     """Render actual Dashifine slices and return file paths."""
@@ -223,22 +224,27 @@ def main(
     V = np.eye(3, len(centers), dtype=np.float32)  # 3 classes from 3 centers
 
     paths: Dict[str, str] = {}
-    # origin slice (no rotation)
-    img0, A0 = render_slice(res_hi, res_hi, o, a, b, centers, V, palette=palette)
-    rgba0 = np.clip(np.dstack([img0, A0]), 0, 1)
-    origin_path = out_dir / "slice_origin.png"
-    plt.imsave(origin_path, rgba0)
-    paths["origin"] = str(origin_path)
+    for t in range(num_time):
+        # increment the origin's w coordinate across normalised time [0,1]
+        o_t = o.copy()
+        o_t[3] = float(t) / max(num_time - 1, 1)
 
-    # rotated slices
-    for i in range(num_rotated):
-        angle = float(i) * 360.0 / max(num_rotated, 1)
-        a_rot, b_rot = rotate_plane_4d(a, b, u, v, np.deg2rad(angle))
-        img, A = render_slice(res_hi, res_hi, o, a_rot, b_rot, centers, V, palette=palette)
-        rgba = np.clip(np.dstack([img, A]), 0, 1)
-        rot_path = out_dir / f"slice_rot_{int(angle):+d}deg.png"
-        plt.imsave(rot_path, rgba)
-        paths[f"rot_{angle:+.1f}"] = str(rot_path)
+        # origin slice for this time step
+        img0, A0 = render_slice(res_hi, res_hi, o_t, a, b, centers, V, palette=palette)
+        rgba0 = np.clip(np.dstack([img0, A0]), 0, 1)
+        origin_path = out_dir / f"slice_t{t}_origin.png"
+        plt.imsave(origin_path, rgba0)
+        paths[f"t{t}_origin"] = str(origin_path)
+
+        # rotated slices for this time step
+        for i in range(num_rotated):
+            angle = float(i) * 360.0 / max(num_rotated, 1)
+            a_rot, b_rot = rotate_plane_4d(a, b, u, v, np.deg2rad(angle))
+            img, A = render_slice(res_hi, res_hi, o_t, a_rot, b_rot, centers, V, palette=palette)
+            rgba = np.clip(np.dstack([img, A]), 0, 1)
+            rot_path = out_dir / f"slice_t{t}_rot_{int(angle):+d}deg.png"
+            plt.imsave(rot_path, rgba)
+            paths[f"t{t}_rot_{angle:+.1f}"] = str(rot_path)
 
     paths["coarse_density"] = str(density_path)
     return {"paths": paths}
@@ -250,6 +256,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--res_hi", type=int, default=128)
     parser.add_argument("--res_coarse", type=int, default=32)
     parser.add_argument("--num_rotated", type=int, default=4)
+    parser.add_argument("--num_time", type=int, default=1)
     parser.add_argument("--palette", type=str, default="cmy", choices=["cmy", "eigen", "lineage"])
     return parser.parse_args()
 
@@ -261,6 +268,7 @@ if __name__ == "__main__":
         res_hi=args.res_hi,
         res_coarse=args.res_coarse,
         num_rotated=args.num_rotated,
+        num_time=args.num_time,
         palette=args.palette,
     )
     # print(out)  # optional

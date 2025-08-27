@@ -1,6 +1,6 @@
 # dashifine
 
-This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.
+This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.  The fourth dimension `w` represents normalised time, so the renderer can step through time to produce sequences of slices.
 
 ## Requirements
 - Python 3.10+
@@ -22,6 +22,9 @@ python Main_with_rotation.py
 ```
 
 All output images are written to `/mnt/data`, including a coarse density map and PNG files for the origin slice and each rotation.
+
+`PATCH_DROPIN_SUGGESTED.py` also supports temporal rendering.  Passing `--num_time N` steps the slice origin through N normalised
+time values (0 to 1), writing files like `slice_t0_rot_0deg.png` for each time step and rotation.
 
 ### P-adic palette
 
