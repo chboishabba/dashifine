@@ -8,7 +8,6 @@ from dashifine.Main_with_rotation import (
     gelu,
     main,
     orthonormalize,
-    rotate_plane,
 )
 
 
