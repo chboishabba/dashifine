@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from typing import Tuple, Dict, Any
+from dataclasses import dataclass
 
 import numpy as np
 import hashlib
@@ -99,6 +100,24 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
 
 
+@dataclass
+class FieldCenters:
+    """Simple container for field centre parameters."""
+
+    mu: np.ndarray
+    sigma: np.ndarray
+    w: np.ndarray
+
+
+CENTERS = FieldCenters(
+    mu=np.zeros((1, 2), dtype=np.float32),
+    sigma=np.ones((1, 2), dtype=np.float32),
+    w=np.ones(1, dtype=np.float32),
+)
+
+BETA = 1.5
+
+
 def lineage_hsv_from_address(addr_digits: str, base: int = 4) -> Tuple[float, float, float]:
     """Map a p-adic style address string to HSV components.
 
@@ -158,22 +177,22 @@ def eigen_palette(weights: np.ndarray) -> np.ndarray:
         Array of shape ``(..., C)`` containing class weights."""
 
 def class_weights_to_rgba(
-    class_weights: np.ndarray,
-    density: np.ndarray,
-    beta: float = 1.5,
+    class_weights: np.ndarray, density: np.ndarray, beta: float = 1.5
 ) -> np.ndarray:
     """Map class weights and density to a composited RGB image.
 
-    The first three channels of ``class_weights`` are interpreted as CMY
-    contributions.  A zero ``K`` channel is appended and the result converted to
-    RGB.  Opacity is computed as ``density ** beta`` and the RGB image is
+    Up to the first three channels of ``class_weights`` are interpreted as
+    cyan, magenta and yellow contributions. Missing channels are assumed to be
+    zero, yielding a CMY triplet which is converted to RGB using ``RGB = 1 -
+    CMY``. Opacity is computed as ``density ** beta`` and the RGB image is
     composited over a white background.
 
     Parameters
     ----------
     class_weights:
-        Array of shape ``(H, W, C)`` with ``C >= 3`` containing per-class
-        weights.
+        Array of shape ``(H, W, C)`` with ``C >= 1`` containing per-class
+        weights. Up to the first three channels are used as CMY components; any
+        remaining channels are ignored.
     density:
         Array of shape ``(H, W)`` giving normalised density ``rho_tilde``.
     beta:
@@ -185,12 +204,10 @@ def class_weights_to_rgba(
         Composited RGB image in ``[0, 1]``.
     """
 
-
-def class_weights_to_rgba(class_weights: np.ndarray, density: np.ndarray, beta: float = 1.5) -> np.ndarray:
-    """Map class weights and density to a composited RGB image."""
-    k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
-    weights = np.concatenate([class_weights[..., :3], k], axis=-1)
-    rgb = mix_cmy_to_rgb(weights)
+    cmy = np.zeros(class_weights.shape[:2] + (3,), dtype=class_weights.dtype)
+    channels = min(class_weights.shape[-1], 3)
+    cmy[..., :channels] = class_weights[..., :channels]
+    rgb = 1.0 - np.clip(cmy, 0.0, 1.0)
     alpha = density_to_alpha(density, beta)
     return composite_rgb_alpha(rgb, alpha)
 
