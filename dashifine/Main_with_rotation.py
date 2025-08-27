@@ -57,6 +57,22 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
     return a, b
 
 
+def rotate_plane(
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Backward compatible wrapper for :func:`rotate_plane_4d`.
+
+    The rotation plane is defined by ``a`` and ``axis``.  This helper exists
+    only so older code and tests expecting ``rotate_plane`` continue to work.
+    """
+
+    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+
+
 def rotate_plane_4d(
     o: np.ndarray,
     a: np.ndarray,
@@ -124,18 +140,26 @@ def eval_field(points: np.ndarray) -> np.ndarray:
     return np.clip(rgb, 0.0, 1.0)
 
 
-def margin_temperature(scores: np.ndarray) -> np.ndarray:
-    """Compute a simple margin-dependent temperature.
+def temperature_from_margin(F_i: np.ndarray) -> float:
+    """Compute a temperature from the score margin of a single pixel.
 
-    The temperature is ``1 + exp(-margin)`` where ``margin`` is the gap between
-    the highest and second highest class score for each pixel.
-    The returned temperature has shape ``scores[..., 0:1]`` for easy broadcasting.
+    Parameters
+    ----------
+    F_i:
+        One-dimensional array of class scores for a pixel.
+
+    Returns
+    -------
+    float
+        Temperature ``tau_i = 1 + exp(-margin)`` where ``margin`` is the gap
+        between the highest and second highest score in ``F_i``. A small margin
+        therefore produces a high temperature and yields a softer softmax
+        distribution.
     """
 
-    sorted_scores = np.sort(scores, axis=-1)
-    margin = sorted_scores[..., -1] - sorted_scores[..., -2]
-    tau = 1.0 + np.exp(-margin)
-    return tau[..., None]
+    sorted_scores = np.sort(F_i)
+    margin = sorted_scores[-1] - sorted_scores[-2]
+    return 1.0 + np.exp(-margin)
 
 
 def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
@@ -358,12 +382,6 @@ def main(
 
     for i in range(num_rotated):
         angle = float(i) * 360.0 / max(num_rotated, 1)
-        _o, _a, _b = rotate_plane(o, a, b, axis, angle)
-        img_alpha = _field_density(res_hi)
-        img = np.dstack([img_alpha] * 3)
-        rgb_rot = np.rot90(rgb, k=i % 4, axes=(0, 1))
-        alpha_rot = np.rot90(alpha, k=i % 4, axes=(0, 1))
-        img = composite_rgb_alpha(rgb_rot, alpha_rot)
         _o, _a, _b = rotate_plane_4d(o, a, b, a, axis, angle)
         points = sample_slice_image(_o, _a, _b, res_hi)
         img = eval_field(points)
@@ -386,7 +404,8 @@ def main(
     F = g @ V.T
     F = F.reshape(res_coarse, res_coarse, num_classes)
 
-    tau = margin_temperature(F)
+    # Per-pixel temperature from score margins followed by softmax.
+    tau = np.apply_along_axis(temperature_from_margin, -1, F)[..., None]
     class_weights = softmax(F / tau, axis=-1)
 
     return {"paths": paths, "density": density, "class_weights": class_weights}
