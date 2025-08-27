@@ -23,6 +23,16 @@ python Main_with_rotation.py
 
 All output images are written to `/mnt/data`, including a coarse density map and PNG files for the origin slice and each rotation.
 
+### P-adic palette
+
+The `render` function accepts two 2D arrays per pixel:
+
+* `addresses` – integer p-adic addresses.
+* `depth` – floating-point depth values.
+
+Setting `palette="p_adic"` maps `addresses` to hue and `depth` to saturation,
+producing an RGB image via HSV conversion.
+
 ## Configuration
 `Main_with_rotation.py` exposes several constants at the top of the file that control behavior, such as:
 
