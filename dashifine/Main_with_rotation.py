@@ -86,6 +86,23 @@ def rotate_plane_4d(
     return _rotate(o), _rotate(a), _rotate(b)
 
 
+def rotate_plane(
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Backward-compatible wrapper around :func:`rotate_plane_4d`.
+
+    The previous API expected a single rotation ``axis``.  We map this to the
+    4D rotation utility by using ``a`` and ``axis`` as the spanning vectors.
+    This is a minimal shim to satisfy tests.
+    """
+
+    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+
+
 def sample_slice_image(o: np.ndarray, a: np.ndarray, b: np.ndarray, res: int) -> np.ndarray:
     """Map pixel coordinates of a slice image to 4D positions.
 
