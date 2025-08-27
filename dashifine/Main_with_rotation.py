@@ -370,7 +370,7 @@ def opacity_from_density(rho: np.ndarray, beta: float = 1.0) -> np.ndarray:
 def rotate_plane(
     o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward‑compatible wrapper using ``a`` and ``axis`` as rotation plane."""
+    """Backward-compatible wrapper using ``a`` and ``axis`` as rotation plane."""
 
     return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
