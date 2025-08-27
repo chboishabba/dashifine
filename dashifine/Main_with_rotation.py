@@ -758,7 +758,7 @@ def main(output_dir: str | Path, res_hi: int = 4, res_coarse: int = 2, num_rotat
 
 if __name__ == "__main__":
     main("examples")
-    Returns
+    """Returns
     -------
     np.ndarray
         Composited RGB image in ``[0, 1]``.
