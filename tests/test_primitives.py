@@ -9,10 +9,11 @@ from dashifine.Main_with_rotation import (
     gelu,
     main,
     orthonormalize,
-    rotate_plane,
     render,
     p_adic_address_to_hue_saturation,
     rotate_plane_4d,
+    rotate_plane,
+    class_weights_to_rgba,
 )
 
 
@@ -50,3 +51,23 @@ def test_p_adic_palette_maps_address_and_depth():
     hsv = np.stack([hue, sat, np.ones_like(hue)], axis=-1)
     expected = hsv_to_rgb(hsv)
     assert np.allclose(rgb, expected)
+
+
+
+def test_rotate_plane_rotates_basis():
+    o = np.zeros(4, dtype=np.float32)
+    a = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+    b = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
+    axis = np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float32)
+    _, a_rot, b_new = rotate_plane(o, a, b, axis, 90.0)
+    assert np.allclose(a_rot, axis, atol=1e-6)
+    assert np.allclose(b_new, b, atol=1e-6)
+
+
+def test_class_weights_to_rgba_fades_low_density():
+    weights = np.array([[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]], dtype=np.float32)
+    density = np.array([[1.0, 0.0]], dtype=np.float32)
+    img = class_weights_to_rgba(weights, density, beta=1.0)
+    assert np.allclose(img[0, 0], np.array([0.0, 1.0, 1.0]), atol=1e-6)
+    assert np.allclose(img[0, 1], np.ones(3), atol=1e-6)
+

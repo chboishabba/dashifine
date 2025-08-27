@@ -1,4 +1,5 @@
 import argparse
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Tuple, Dict, Any
 
@@ -6,37 +7,39 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 import numpy as np
 
-# -----------------------------------------------------------------------------
-# Field definition
-# -----------------------------------------------------------------------------
-#
-# ``mu``   : (N, 2) centre positions in the x/y plane.
-# ``sigma``: (N, 2) per-axis standard deviations describing an anisotropic
-#            falloff around each centre.
-# ``w``    : (N,) weights controlling each centre's contribution.
-#
-# These constants provide a tiny synthetic field that the demo script samples
-# when producing its density maps and rotated slices.
+@dataclass
+class FieldCenters:
+    """Parameterisation of a small synthetic field."""
 
-MU = np.array(
-    [
-        [-0.5, -0.5],
-        [0.5, -0.3],
-        [0.0, 0.6],
-    ],
-    dtype=np.float32,
+    mu: np.ndarray
+    """Centre positions in the x/y plane with shape ``(N, 2)``."""
+
+    sigma: np.ndarray
+    """Per-axis standard deviations for anisotropic falloff, shape ``(N, 2)``."""
+
+    w: np.ndarray
+    """Weights controlling each centre's contribution with shape ``(N,)``."""
+
+
+CENTERS = FieldCenters(
+    mu=np.array(
+        [
+            [-0.5, -0.5],
+            [0.5, -0.3],
+            [0.0, 0.6],
+        ],
+        dtype=np.float32,
+    ),
+    sigma=np.array(
+        [
+            [0.3, 0.2],
+            [0.25, 0.35],
+            [0.2, 0.25],
+        ],
+        dtype=np.float32,
+    ),
+    w=np.array([1.0, 0.8, 1.2], dtype=np.float32),
 )
-
-SIGMA = np.array(
-    [
-        [0.3, 0.2],
-        [0.25, 0.35],
-        [0.2, 0.25],
-    ],
-    dtype=np.float32,
-)
-
-W = np.array([1.0, 0.8, 1.2], dtype=np.float32)
 
 # Exponent for visibility normalisation
 BETA = 0.5
@@ -67,6 +70,51 @@ def rotate_plane(
     """Placeholder plane rotation that leaves inputs unchanged."""
 
     return o, a, b
+    axis_perp: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rotate a 2D plane within 4D space around ``axis_perp``.
+
+    The basis vectors ``a`` and ``b`` spanning the plane are first
+    orthonormalised.  The component of ``axis_perp`` orthogonal to this plane
+    defines the rotation axis.  The plane is then rotated by ``angle_deg``
+    degrees around this axis.
+
+    Parameters
+    ----------
+    o : np.ndarray
+        Origin of the slice plane.
+    a, b : np.ndarray
+        Basis vectors spanning the plane.
+    axis_perp : np.ndarray
+        Vector defining the rotation axis (need not be normalised).
+    angle_deg : float
+        Rotation angle in degrees.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+        The unchanged origin and the rotated basis vectors ``a`` and ``b``.
+    """
+
+    a1, b1 = orthonormalize(a, b)
+    n = axis_perp.astype(np.float32)
+    n = n - (n @ a1) * a1 - (n @ b1) * b1
+    n /= np.linalg.norm(n) + 1e-8
+    theta = np.deg2rad(angle_deg).astype(np.float32)
+    a_rot = np.cos(theta) * a1 + np.sin(theta) * n
+    a_rot, b_new = orthonormalize(a_rot, b1)
+    return o, a_rot, b_new
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Backward compatible wrapper for :func:`rotate_plane_4d`.
+
+    The rotation plane is defined by ``a`` and ``axis``.  This helper exists
+    only so older code and tests expecting ``rotate_plane`` continue to work.
+    """
+
+    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
 
 def rotate_plane_4d(
@@ -96,6 +144,35 @@ def rotate_plane_4d(
         return x_perp + xr * u + yr * v
 
     return _rotate(o), _rotate(a), _rotate(b)
+
+
+def rotate_plane(
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    axis_perp: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Rotate slice vectors using ``rotate_plane_4d``.
+
+    The slice ``(o, a, b)`` is rotated in the plane spanned by ``a`` and
+    ``axis_perp``.  This thin wrapper exists for backwards compatibility with
+    earlier APIs while delegating all work to :func:`rotate_plane_4d`.
+    """
+
+    return rotate_plane_4d(o, a, b, a, axis_perp, angle_deg)
+
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Backward compatible wrapper around :func:`rotate_plane_4d`.
+
+    The wrapper rotates the slice plane spanned by ``a`` and ``b`` around the
+    provided ``axis`` by ``angle_deg`` degrees.  It delegates to
+    ``rotate_plane_4d`` by using ``a`` and ``axis`` as the rotation plane.
+    """
+
+    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
 
 def sample_slice_image(o: np.ndarray, a: np.ndarray, b: np.ndarray, res: int) -> np.ndarray:
@@ -136,18 +213,26 @@ def eval_field(points: np.ndarray) -> np.ndarray:
     return np.clip(rgb, 0.0, 1.0)
 
 
-def margin_temperature(scores: np.ndarray) -> np.ndarray:
-    """Compute a simple margin-dependent temperature.
+def temperature_from_margin(F_i: np.ndarray) -> float:
+    """Compute a temperature from the score margin of a single pixel.
 
-    The temperature is ``1 + exp(-margin)`` where ``margin`` is the gap between
-    the highest and second highest class score for each pixel.
-    The returned temperature has shape ``scores[..., 0:1]`` for easy broadcasting.
+    Parameters
+    ----------
+    F_i:
+        One-dimensional array of class scores for a pixel.
+
+    Returns
+    -------
+    float
+        Temperature ``tau_i = 1 + exp(-margin)`` where ``margin`` is the gap
+        between the highest and second highest score in ``F_i``. A small margin
+        therefore produces a high temperature and yields a softer softmax
+        distribution.
     """
 
-    sorted_scores = np.sort(scores, axis=-1)
-    margin = sorted_scores[..., -1] - sorted_scores[..., -2]
-    tau = 1.0 + np.exp(-margin)
-    return tau[..., None]
+    sorted_scores = np.sort(F_i)
+    margin = sorted_scores[-1] - sorted_scores[-2]
+    return 1.0 + np.exp(-margin)
 
 
 def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
@@ -211,7 +296,29 @@ def eigen_palette(weights: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     weights:
-        Array of shape ``(..., C)`` containing class weights.
+        Array of shape ``(..., C)`` containing class weights."""
+
+def class_weights_to_rgba(
+    class_weights: np.ndarray,
+    density: np.ndarray,
+    beta: float = 1.5,
+) -> np.ndarray:
+    """Map class weights and density to a composited RGB image.
+
+    The first three channels of ``class_weights`` are interpreted as CMY
+    contributions.  A zero ``K`` channel is appended and the result converted to
+    RGB.  Opacity is computed as ``density ** beta`` and the RGB image is
+    composited over a white background.
+
+    Parameters
+    ----------
+    class_weights:
+        Array of shape ``(H, W, C)`` with ``C >= 3`` containing per-class
+        weights.
+    density:
+        Array of shape ``(H, W)`` giving normalised density ``rho_tilde``.
+    beta:
+        Exponent controlling opacity from density.
 
     Returns
     -------
@@ -222,6 +329,15 @@ def eigen_palette(weights: np.ndarray) -> np.ndarray:
     top = np.max(weights, axis=-1, keepdims=True)
     rgb = np.repeat(top, 3, axis=-1)
     return np.clip(rgb, 0.0, 1.0)
+
+   """     Composited RGB image in ``[0, 1]``.
+    
+
+    k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
+    weights = np.concatenate([class_weights[..., :3], k], axis=-1)
+    rgb = mix_cmy_to_rgb(weights)
+    alpha = density_to_alpha(density, beta)
+    return composite_rgb_alpha(rgb, alpha)"""
 
 
 def p_adic_address_to_hue_saturation(
@@ -293,21 +409,30 @@ def render(
     return np.stack([value, value, value], axis=-1)
 
 
-def _field_density(res: int, beta: float = BETA) -> np.ndarray:
+def _field_density(
+    res: int,
+    *,
+    centers: FieldCenters = CENTERS,
+    beta: float = BETA,
+) -> np.ndarray:
     """Evaluate the synthetic field on a ``res``×``res`` grid.
 
     Parameters
     ----------
     res:
         Resolution of the square grid to evaluate.
+    centers:
+        ``FieldCenters`` describing positions, falloff and weights of kernels.
     beta:
         Exponent for visibility normalisation.
 
     Returns
     -------
     np.ndarray
-        Normalised density ``rho_tilde`` raised to ``beta``.
+        Visibility ``alpha_vis`` derived from the normalised density.
     """
+
+    mu, sigma, w = centers.mu, centers.sigma, centers.w
 
     # Generate grid coordinates in [-1, 1]
     lin = np.linspace(-1.0, 1.0, res, dtype=np.float32)
@@ -315,20 +440,21 @@ def _field_density(res: int, beta: float = BETA) -> np.ndarray:
     pos = np.stack([X, Y], axis=-1)  # (res, res, 2)
 
     # Compute anisotropic distances r_i for each centre
-    diff = pos[None, ...] - MU[:, None, None, :]  # (N, res, res, 2)
-    r = np.sqrt(((diff / SIGMA[:, None, None, :]) ** 2).sum(axis=-1))  # (N, res, res)
+    diff = pos[None, ...] - mu[:, None, None, :]  # (N, res, res, 2)
+    ri = np.linalg.norm(diff / sigma[:, None, None, :], axis=-1)  # (N, res, res)
 
-    # Initial kernel contributions g_i
-    g = W[:, None, None] * gelu(1.0 - r)
-    rho_tilde = g.sum(axis=0)
+    # Initial kernel contributions and normalised density
+    g = w[:, None, None] * gelu(1.0 - ri)
+    rho = g.sum(axis=0)
+    rho_tilde = (rho - rho.min()) / (rho.max() - rho.min() + 1e-8)
 
     # Mass-coupling via effective alpha
     alpha_eff = 1.0 / (1.0 + rho_tilde)
-    g = W[:, None, None] * gelu(alpha_eff - r)
-    rho_tilde = g.sum(axis=0)
+    g = w[:, None, None] * gelu(alpha_eff * (1.0 - ri))
+    rho = g.sum(axis=0)
 
     # Normalise and compute visibility alpha
-    rho_tilde = (rho_tilde - rho_tilde.min()) / (rho_tilde.max() - rho_tilde.min() + 1e-8)
+    rho_tilde = (rho - rho.min()) / (rho.max() - rho.min() + 1e-8)
     alpha_vis = rho_tilde ** beta
     return alpha_vis
 
@@ -343,16 +469,18 @@ def main(
     slopes: np.ndarray | None = None,
     opacity_exp: float = 1.5,
     palette: str = "cmy",
+    centers: FieldCenters = CENTERS,
+    beta: float = BETA,
 ) -> Dict[str, Any]:
     """Generate synthetic slices and return their file paths."""
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    density = _field_density(res_coarse)
+    density = _field_density(res_coarse, centers=centers, beta=beta)
     density_path = out_dir / "coarse_density_map.png"
     plt.imsave(density_path, density, cmap="gray")
 
-    origin_alpha = _field_density(res_hi)
+    origin_alpha = _field_density(res_hi, centers=centers, beta=beta)
     origin = np.dstack([origin_alpha] * 3)
     """Generate example slices and return their file paths."""
     out_dir = Path(output_dir)
@@ -397,7 +525,7 @@ def main(
 
     paths = {"origin": str(origin_path), "coarse_density": str(density_path)}
 
-    # Generate rotated slices (placeholder using 90-degree rotations)
+    # Generate rotated slices using 4D plane rotations
     o = np.zeros(4, dtype=np.float32)
     a = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
     b = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
@@ -412,14 +540,19 @@ def main(
     origin_img = eval_field(origin_points)
     plt.imsave(origin_path, origin_img)
 
+    # Define rotation plane and generate rotated slices
+    rot_u = a + b
+    rot_v = axis
+
     for i in range(num_rotated):
         angle = float(i) * 360.0 / max(num_rotated, 1)
-        _o, _a, _b = rotate_plane(o, a, b, axis, angle)
-        img_alpha = _field_density(res_hi)
+        _o, _a, _b = rotate_plane_4d(o, a, b, rot_u, rot_v, angle)
+        img_alpha = _field_density(res_hi, centers=centers, beta=beta)
         img = np.dstack([img_alpha] * 3)
         rgb_rot = np.rot90(rgb, k=i % 4, axes=(0, 1))
         alpha_rot = np.rot90(alpha, k=i % 4, axes=(0, 1))
         img = composite_rgb_alpha(rgb_rot, alpha_rot)
+
         _o, _a, _b = rotate_plane_4d(o, a, b, a, axis, angle)
         points = sample_slice_image(_o, _a, _b, res_hi)
         img = eval_field(points)
@@ -442,8 +575,13 @@ def main(
     F = g @ V.T
     F = F.reshape(res_coarse, res_coarse, num_classes)
 
-    tau = margin_temperature(F)
+    # Per-pixel temperature from score margins followed by softmax.
+    tau = np.apply_along_axis(temperature_from_margin, -1, F)[..., None]
     class_weights = softmax(F / tau, axis=-1)
+    class_img = class_weights_to_rgba(class_weights, density, opacity_exp)
+    class_path = out_dir / "class_weights_composite.png"
+    plt.imsave(class_path, class_img)
+    paths["class_weights"] = str(class_path)
 
     return {"paths": paths, "density": density, "class_weights": class_weights}
 

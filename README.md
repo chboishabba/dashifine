@@ -1,6 +1,6 @@
 # dashifine
 
-This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.
+This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.  The fourth dimension `w` represents normalised time, so the renderer can step through time to produce sequences of slices.
 
 ## Requirements
 - Python 3.10+
@@ -22,6 +22,9 @@ python Main_with_rotation.py
 ```
 
 All output images are written to `/mnt/data`, including a coarse density map and PNG files for the origin slice and each rotation.
+
+`PATCH_DROPIN_SUGGESTED.py` also supports temporal rendering.  Passing `--num_time N` steps the slice origin through N normalised
+time values (0 to 1), writing files like `slice_t0_rot_0deg.png` for each time step and rotation.
 
 ### P-adic palette
 
@@ -130,6 +133,15 @@ Sample output from a run of `Main_with_rotation.py`:
 ![Rotated Slice](examples/slice_rot_10deg.png)
 
 ---
+
+## Manual QA
+
+Use this checklist to verify the renderer behaves as expected:
+
+- [ ] Run `python Main_with_rotation.py --output_dir examples --num_rotated 8` and confirm successive PNGs differ.
+- [ ] Verify translucent voids appear in low-density regions.
+- [ ] Place two centers close together to observe blended colours; separated centers yield crisp hues.
+- [ ] Expect CM/CMY primary colours for the three classes: cyan, magenta and yellow.
 
 Why not just use float32 everywhere?
 
