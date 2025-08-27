@@ -6,6 +6,8 @@ from typing import Tuple, Dict, Any
 import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 import numpy as np
+import hashlib
+import re
 
 @dataclass
 class FieldCenters:
@@ -67,52 +69,7 @@ def rotate_plane(
     axis: np.ndarray,
     angle_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Placeholder plane rotation that leaves inputs unchanged."""
-
-    return o, a, b
-    axis_perp: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate a 2D plane within 4D space around ``axis_perp``.
-
-    The basis vectors ``a`` and ``b`` spanning the plane are first
-    orthonormalised.  The component of ``axis_perp`` orthogonal to this plane
-    defines the rotation axis.  The plane is then rotated by ``angle_deg``
-    degrees around this axis.
-
-    Parameters
-    ----------
-    o : np.ndarray
-        Origin of the slice plane.
-    a, b : np.ndarray
-        Basis vectors spanning the plane.
-    axis_perp : np.ndarray
-        Vector defining the rotation axis (need not be normalised).
-    angle_deg : float
-        Rotation angle in degrees.
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray, np.ndarray]
-        The unchanged origin and the rotated basis vectors ``a`` and ``b``.
-    """
-
-    a1, b1 = orthonormalize(a, b)
-    n = axis_perp.astype(np.float32)
-    n = n - (n @ a1) * a1 - (n @ b1) * b1
-    n /= np.linalg.norm(n) + 1e-8
-    theta = np.deg2rad(angle_deg).astype(np.float32)
-    a_rot = np.cos(theta) * a1 + np.sin(theta) * n
-    a_rot, b_new = orthonormalize(a_rot, b1)
-    return o, a_rot, b_new
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward compatible wrapper for :func:`rotate_plane_4d`.
-
-    The rotation plane is defined by ``a`` and ``axis``.  This helper exists
-    only so older code and tests expecting ``rotate_plane`` continue to work.
-    """
+    """Rotate ``(o, a, b)`` around ``axis`` using :func:`rotate_plane_4d`."""
 
     return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
@@ -145,43 +102,6 @@ def rotate_plane_4d(
 
     return _rotate(o), _rotate(a), _rotate(b)
 
-
-def rotate_plane(
-    o: np.ndarray,
-    a: np.ndarray,
-    b: np.ndarray,
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward-compatible wrapper around :func:`rotate_plane_4d`.
-
-    The previous API expected a single rotation ``axis``.  We map this to the
-    4D rotation utility by using ``a`` and ``axis`` as the spanning vectors.
-    This is a minimal shim to satisfy tests."""
-
-    axis_perp: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate slice vectors using ``rotate_plane_4d``.
-
-    The slice ``(o, a, b)`` is rotated in the plane spanned by ``a`` and
-    ``axis_perp``.  This thin wrapper exists for backwards compatibility with
-    earlier APIs while delegating all work to :func:`rotate_plane_4d`.
-    """
-
-    return rotate_plane_4d(o, a, b, a, axis_perp, angle_deg)
-
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward compatible wrapper around :func:`rotate_plane_4d`.
-
-    The wrapper rotates the slice plane spanned by ``a`` and ``b`` around the
-    provided ``axis`` by ``angle_deg`` degrees.  It delegates to
-    ``rotate_plane_4d`` by using ``a`` and ``axis`` as the rotation plane.
-    """
-
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
 
 def sample_slice_image(o: np.ndarray, a: np.ndarray, b: np.ndarray, res: int) -> np.ndarray:
@@ -282,21 +202,54 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
 
 
-def lineage_hue_from_address(addr_digits: str) -> float:
-    """Placeholder lineage hue mapping.
+def lineage_hsv_from_address(addr_digits: str, base: int = 4) -> Tuple[float, float, float]:
+    """Map a p-adic style address string to HSV components.
+
+    The integer portion of ``addr_digits`` is interpreted as base-``p`` digits
+    contributing fractional hue.  Any leading digits form a *prefix* which is
+    hashed to provide a stable base hue.  An optional fractional part encodes
+    depth, modulating saturation and value.
 
     Parameters
     ----------
     addr_digits:
-        String representation of the p-adic address.
+        Address string of the form ``"<prefix><digits>[.<depth>]"``.
+    base:
+        Base ``p`` used to interpret the integer suffix.
 
     Returns
     -------
-    float
-        Hue value in ``[0, 1]``; stub returns ``0.0``.
+    tuple[float, float, float]
+        Normalised ``(h, s, v)`` components.
     """
 
-    return 0.0
+    if "." in addr_digits:
+        addr_main, frac_part = addr_digits.split(".", 1)
+    else:
+        addr_main, frac_part = addr_digits, ""
+
+    m = re.match(r"(\d*?)(\d+)$", addr_main)
+    if m:
+        prefix_digits, suffix_digits = m.group(1), m.group(2)
+    else:
+        prefix_digits, suffix_digits = "", addr_main
+
+    if prefix_digits:
+        h = hashlib.sha256(prefix_digits.encode("utf-8")).hexdigest()
+        prefix_hue = int(h[:8], 16) / 0xFFFFFFFF
+    else:
+        prefix_hue = 0.0
+
+    hue = prefix_hue
+    for k, ch in enumerate(reversed(suffix_digits)):
+        digit = min(int(ch), base - 1)
+        hue += digit / (base ** (k + 1))
+    hue %= 1.0
+
+    depth = float(f"0.{frac_part}") if frac_part else 0.0
+    saturation = np.clip(depth, 0.0, 1.0)
+    value = 1.0 - 0.5 * depth
+    return float(hue), float(saturation), float(value)
 
 
 def eigen_palette(weights: np.ndarray) -> np.ndarray:
@@ -332,21 +285,14 @@ def class_weights_to_rgba(
     Returns
     -------
     np.ndarray
-        RGB image in ``[0, 1]`` where all channels equal the top class weight.
+        Composited RGB image in ``[0, 1]``.
     """
-
-    top = np.max(weights, axis=-1, keepdims=True)
-    rgb = np.repeat(top, 3, axis=-1)
-    return np.clip(rgb, 0.0, 1.0)
-
-   """     Composited RGB image in ``[0, 1]``.
-    
 
     k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
     weights = np.concatenate([class_weights[..., :3], k], axis=-1)
     rgb = mix_cmy_to_rgb(weights)
     alpha = density_to_alpha(density, beta)
-    return composite_rgb_alpha(rgb, alpha)"""
+    return composite_rgb_alpha(rgb, alpha)
 
 
 def p_adic_address_to_hue_saturation(
@@ -514,7 +460,15 @@ def main(
     elif palette == "eigen":
         rgb = eigen_palette(weights_hi)
     elif palette == "lineage":
-        rgb = eigen_palette(weights_hi)
+        num_classes = weights_hi.shape[-1]
+        palette_rgb = np.zeros((num_classes, 3), dtype=np.float32)
+        for i in range(num_classes):
+            h, s, v = lineage_hsv_from_address(str(i))
+            palette_rgb[i] = hsv_to_rgb([h, s, v])
+        weights_norm = weights_hi / (
+            np.sum(weights_hi, axis=-1, keepdims=True) + 1e-8
+        )
+        rgb = weights_norm @ palette_rgb
     else:
         rgb = mix_cmy_to_rgb(weights_hi)
     density_hi = weights_hi.mean(axis=-1)
@@ -609,7 +563,7 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         default="cmy",
         choices=["cmy", "lineage", "eigen"],
-        help="Colour palette for slice rendering",
+        help="Colour palette for slice rendering ('cmy', 'lineage', or 'eigen')",
     )
     return parser.parse_args()
 
