@@ -603,7 +603,7 @@ def composite_rgb_alpha(
 ) -> np.ndarray:
     """Composite an RGB image against ``bg`` using the supplied alpha."""
 
-    rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, float, float] = (1.0, 1.0, 1.0),
 ) -> np.ndarray:
 
 def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, float, float] = (1.0, 1.0, 1.0)) -> np.ndarray:
