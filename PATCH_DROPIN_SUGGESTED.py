@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from typing import Tuple, Dict, Any, List
+from typing import Tuple, Dict, Any, List, Sequence
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
@@ -111,11 +111,26 @@ def alpha_eff(rho_tilde: np.ndarray, a_min: float = 0.6, a_max: float = 2.2, lam
 
 def field_and_classes(points4: np.ndarray, centers: List[Dict[str, np.ndarray]], V: np.ndarray,
                       rho_eps: float = 1e-6) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    points4: (HW,4)
-    centers: list of { 'mu':(4,), 'sigma':(4,), 'w':float }
-    V: (C,N) class loadings (C classes, N centers)
-    returns: rho (HW,), F (HW,C)
+    """Evaluate density and per-class weights for ``points4``.
+
+    Parameters
+    ----------
+    points4:
+        Array of shape ``(HW, 4)`` with slice sample positions.
+    centers:
+        List of dictionaries describing Gaussian-like centres with keys
+        ``mu`` (4,), ``sigma`` (4,) and ``w`` (float).
+    V:
+        Class loadings of shape ``(C, N)`` mapping centre contributions to
+        ``C`` classes.
+    rho_eps:
+        Small constant to avoid division by zero when normalising ``rho``.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        ``rho`` of shape ``(HW,)`` and temperatured softmax weights ``W`` of
+        shape ``(HW, C)`` ready for colouring.
     """
     HW = points4.shape[0]
     N = len(centers)
@@ -138,7 +153,14 @@ def field_and_classes(points4: np.ndarray, centers: List[Dict[str, np.ndarray]],
 
     F = g2 @ V.T  # (HW,C)
     rho2 = np.sum(g2, axis=1)
-    return rho2, F
+
+    # Per-pixel temperature from top-2 margin and corresponding softmax
+    W = np.zeros_like(F)
+    for i in range(F.shape[0]):
+        tau = temperature_from_margin(F[i])
+        W[i] = softmax(F[i], tau=tau)
+
+    return rho2, W
 
 
 # ------------------------------- colour mapping ------------------------------
@@ -205,23 +227,64 @@ def sample_slice_points(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4:
     pts = origin4[None, :] + scale * (U.reshape(-1, 1) * a4[None, :] + V.reshape(-1, 1) * b4[None, :])
     return pts  # (HW,4)
 
-def render_slice(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray,
-                 centers: List[Dict[str, np.ndarray]], V: np.ndarray, palette: str = "cmy") -> Tuple[np.ndarray, np.ndarray]:
+def render_slice(
+    H: int,
+    W: int,
+    origin4: np.ndarray,
+    a4: np.ndarray,
+    b4: np.ndarray,
+    centers: List[Dict[str, np.ndarray]],
+    V: np.ndarray,
+    palette: str = "cmy",
+    bg: Sequence[float] | np.ndarray = np.ones(3, dtype=np.float32),
+    beta: float = 1.5,
+) -> np.ndarray:
+    """Render a single slice and composite against ``bg``.
+
+    Parameters
+    ----------
+    H, W:
+        Output image height and width.
+    origin4, a4, b4:
+        Slice origin and basis vectors in 4D.
+    centers:
+        List of centre dictionaries defining the field.
+    V:
+        Class loading matrix.
+    palette:
+        Colour mapping strategy (``"cmy"``, ``"eigen"``, ``"lineage"``).
+    bg:
+        RGB background colour to composite over.
+    beta:
+        Opacity exponent ``α = ρ̃^β``.
+
+    Returns
+    -------
+    np.ndarray
+        Composited RGB image of shape ``(H, W, 3)``.
+    """
+
     pts = sample_slice_points(H, W, origin4, a4, b4, scale=1.0)
-    rho, F = field_and_classes(pts, centers, V)
+    rho, Wc = field_and_classes(pts, centers, V)
 
-    # temperatured softmax per pixel
-    C = F.shape[1]
-    Wc = np.zeros_like(F)
-    for i in range(F.shape[0]):
-        tau = temperature_from_margin(F[i])
-        Wc[i] = softmax(F[i], tau=tau)
+    C = Wc.shape[1]
 
-    if palette.lower() == "cmy" and C >= 3:
-        RGB = cmy_from_weights(Wc[:, :3]).reshape(H, W, 3)
+    if palette.lower() == "cmy":
+        CMY = np.zeros((Wc.shape[0], 3), dtype=np.float32)
+        CMY[:, : min(3, C)] = np.clip(Wc[:, : min(3, C)], 0.0, 1.0)
+        rgb = 1.0 - CMY
     elif palette.lower() == "eigen":
-        RGB = eigen_palette(Wc).reshape(H, W, 3)
+        rgb = eigen_palette(Wc)
     elif palette.lower() == "lineage":
+        top_idx = np.argmax(Wc, axis=1)
+        depth = np.max(Wc, axis=1)
+        hsv = np.zeros((Wc.shape[0], 3), dtype=np.float32)
+        for i, (idx, d) in enumerate(zip(top_idx, depth)):
+            d_clip = np.clip(d, 0.0, 0.999)
+            addr = f"{int(idx)}.{int(d_clip * 1000):03d}"
+            h, s, v = lineage_hue_from_address(addr)
+            hsv[i] = [h, s, v]
+        rgb = hsv_to_rgb(hsv)
         if all("addr" in c for c in centers):
             centre_hsv = [lineage_hsv_from_address(c.get("addr", "")) for c in centers]
             centre_rgb = hsv_to_rgb(np.array(centre_hsv, dtype=np.float32))
@@ -237,17 +300,20 @@ def render_slice(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.nda
                 hsv[i] = lineage_hsv_from_address(addr)
             RGB = hsv_to_rgb(hsv).reshape(H, W, 3)
     else:
-        # 2-class CM (Cyan/Magenta) or generic grayscale fallback
         if C >= 2:
-            CM = np.clip(Wc[:, :2], 0, 1)  # [C,M]
-            # fill Y=0, make 3 channels CMY -> RGB
-            CMY = np.concatenate([CM, np.zeros((Wc.shape[0], 1), dtype=np.float32)], axis=1)
-            RGB = (1.0 - CMY).reshape(H, W, 3)
+            CM = np.clip(Wc[:, :2], 0, 1)
+            CMY = np.concatenate(
+                [CM, np.zeros((Wc.shape[0], 1), dtype=np.float32)], axis=1
+            )
+            rgb = 1.0 - CMY
         else:
-            RGB = np.repeat(np.max(Wc, axis=1).reshape(H, W, 1), 3, axis=2)
+            rgb = np.repeat(np.max(Wc, axis=1).reshape(-1, 1), 3, axis=1)
 
-    A = opacity_from_density(rho).reshape(H, W, 1)
-    return np.clip(RGB, 0, 1), A
+    rgb = rgb.reshape(H, W, 3)
+    alpha = opacity_from_density(rho, beta=beta).reshape(H, W, 1)
+    bg_arr = np.array(bg, dtype=np.float32).reshape(1, 1, 3)
+    img = np.clip(rgb * alpha + bg_arr * (1.0 - alpha), 0.0, 1.0)
+    return img
 
 
 # ------------------------------------ main -----------------------------------
@@ -302,20 +368,22 @@ def main(
         o_t[3] = float(t) / max(num_time - 1, 1)
 
         # origin slice for this time step
-        img0, A0 = render_slice(res_hi, res_hi, o_t, a, b, centers, V, palette=palette)
-        rgba0 = np.clip(np.dstack([img0, A0]), 0, 1)
+        img0 = render_slice(
+            res_hi, res_hi, o_t, a, b, centers, V, palette=palette
+        )
         origin_path = out_dir / f"slice_t{t}_origin.png"
-        plt.imsave(origin_path, rgba0)
+        plt.imsave(origin_path, img0)
         paths[f"t{t}_origin"] = str(origin_path)
 
         # rotated slices for this time step
         for i in range(num_rotated):
             angle = float(i) * 360.0 / max(num_rotated, 1)
             a_rot, b_rot = rotate_plane_4d(a, b, u, v, np.deg2rad(angle))
-            img, A = render_slice(res_hi, res_hi, o_t, a_rot, b_rot, centers, V, palette=palette)
-            rgba = np.clip(np.dstack([img, A]), 0, 1)
+            img = render_slice(
+                res_hi, res_hi, o_t, a_rot, b_rot, centers, V, palette=palette
+            )
             rot_path = out_dir / f"slice_t{t}_rot_{int(angle):+d}deg.png"
-            plt.imsave(rot_path, rgba)
+            plt.imsave(rot_path, img)
             paths[f"t{t}_rot_{angle:+.1f}"] = str(rot_path)
 
     paths["coarse_density"] = str(density_path)

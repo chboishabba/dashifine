@@ -73,3 +73,11 @@ def test_class_weights_to_rgba_fades_low_density():
     assert np.allclose(img[0, 1], np.ones(3), atol=1e-6)
 
 
+def test_class_weights_to_rgba_handles_single_channel():
+    weights = np.array([[[0.5], [0.0]]], dtype=np.float32)
+    density = np.array([[1.0, 0.5]], dtype=np.float32)
+    img = class_weights_to_rgba(weights, density, beta=1.0)
+    assert img.shape == (1, 2, 3)
+    assert np.allclose(img[0, 0], np.array([0.5, 1.0, 1.0]), atol=1e-6)
+
+

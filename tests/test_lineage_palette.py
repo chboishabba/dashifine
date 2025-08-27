@@ -10,8 +10,6 @@ from PATCH_DROPIN_SUGGESTED import (
     render_slice,
     sample_slice_points,
     field_and_classes,
-    temperature_from_margin,
-    softmax,
 )
 
 
@@ -30,14 +28,21 @@ def test_render_slice_lineage_palette_matches_hsv_mapping():
     centers = [{"mu": origin, "sigma": np.ones(4, dtype=np.float32), "w": 1.0}]
     V = np.eye(1, dtype=np.float32)
 
-    rgb, _ = render_slice(H, W, origin, a, b, centers, V, palette="lineage")
+    rgb = render_slice(
+        H,
+        W,
+        origin,
+        a,
+        b,
+        centers,
+        V,
+        palette="lineage",
+        bg=np.zeros(3, dtype=np.float32),
+        beta=0.0,
+    )
 
     pts = sample_slice_points(H, W, origin, a, b)
-    rho, F = field_and_classes(pts, centers, V)
-    Wc = np.zeros_like(F)
-    for i in range(F.shape[0]):
-        tau = temperature_from_margin(F[i])
-        Wc[i] = softmax(F[i], tau=tau)
+    rho, Wc = field_and_classes(pts, centers, V)
     top_idx = np.argmax(Wc, axis=1)
     depth = np.max(Wc, axis=1)
     hsv = np.zeros((Wc.shape[0], 3), dtype=np.float32)
