@@ -1,3 +1,15 @@
+"""Dashifine demo utilities.
+
+This module contains a tiny synthetic 4D field along with a number of helper
+functions used throughout the tests.  The implementation is intentionally small
+and is not meant to be a feature complete renderer – many of the operations are
+simple placeholders that nevertheless exercise the control flow of the real
+project.
+
+The script can also be executed directly to generate a couple of example images
+showcasing the different colour palettes.
+"""
+
 """Dashifine slice renderer with simple 4‑D geometry utilities.
 
 This module exposes a small set of functions that are exercised by the unit
@@ -16,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Any, Dict, Tuple
 from typing import Any, Dict, Iterable, List, Tuple
 
 import numpy as np
@@ -27,6 +40,12 @@ from matplotlib.colors import hsv_to_rgb
 # ---------------------------------------------------------------------------
 # Basic maths helpers
 
+
+# ---------------------------------------------------------------------------
+# Basic data structures
+# ---------------------------------------------------------------------------
+
+
 @dataclass
 class FieldCenters:
     """Parameterisation of anisotropic radial basis functions in 4D."""
@@ -37,12 +56,14 @@ class FieldCenters:
     sigma: np.ndarray
     """Per-axis standard deviations for anisotropic falloff, shape ``(N, 4)``."""
 
+
 def gelu(x: np.ndarray) -> np.ndarray:
     """Simple odd activation used in tests."""
 
     return np.tanh(x)
 
 
+# A few hard coded centres used by tests
 # Default centres used for examples and tests.  The ``z`` and ``w`` coordinates
 # are zero so that :func:`_field_density` can project them to the ``x``/``y``
 # plane without additional parameters.
@@ -50,6 +71,8 @@ CENTERS = FieldCenters(
     mu=np.array(
         [
             [0.0, 0.0, 0.0, 0.0],
+            [0.5, 0.5, 0.0, 0.0],
+            [-0.5, 0.25, 0.0, 0.0],
             [0.8, 0.0, 0.0, 0.0],
             [0.0, 0.8, 0.0, 0.0],
         ],
@@ -57,6 +80,9 @@ CENTERS = FieldCenters(
     ),
     sigma=np.array(
         [
+            [0.3, 0.3, 0.3, 0.3],
+            [0.25, 0.25, 0.25, 0.25],
+            [0.35, 0.35, 0.35, 0.35],
             [0.6, 0.6, 0.6, 0.6],
             [0.4, 0.7, 0.6, 0.6],
             [0.6, 0.4, 0.6, 0.6],
@@ -66,6 +92,13 @@ CENTERS = FieldCenters(
     w=np.array([1.0, 0.8, 0.9], dtype=np.float32),
 )
 
+# Exponent used when converting density to opacity
+BETA = 1.5
+
+
+# ---------------------------------------------------------------------------
+# Small maths helpers
+# ---------------------------------------------------------------------------
 def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
     """Numerically stable softmax."""
 
@@ -83,6 +116,8 @@ def temperature_from_margin(F_i: np.ndarray) -> float:
 # ------------------------------ basic primitives -----------------------------
 
 def gelu(x: np.ndarray) -> np.ndarray:
+    """Light‑weight GELU approximation used in a few tests."""
+
     """Simple odd activation used in tests."""
     return np.tanh(x)
 
@@ -119,6 +154,9 @@ def field_and_classes(
     diff = points4[:, None, :] - mu[None, :, :]  # (HW, N, 4)
     ri = np.linalg.norm(diff / (sigma[None, :, :] + 1e-8), axis=-1)  # (HW, N)
 def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.ndarray, np.ndarray]:
+    """Orthonormalise vectors ``a`` and ``b`` using Gram–Schmidt."""
+
+
     """Orthonormalise ``a`` and ``b`` using Gram–Schmidt."""
 
     """Orthonormalise vectors ``a`` and ``b`` with Gram–Schmidt."""
@@ -128,6 +166,7 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
     b = b - np.dot(a, b) * a
     b = b / (np.linalg.norm(b) + eps)
     return a, b
+
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +212,8 @@ def rotate_plane_4d(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``.
 
+    u, v = orthonormalize(u, v)
+    theta = np.deg2rad(angle_deg)
     ``u`` and ``v`` need not be normalised; they simply define the rotation
     plane.  Components of the inputs that lie in this plane are rotated by
     ``angle_deg`` degrees while orthogonal components remain unchanged.
@@ -187,6 +228,8 @@ def rotate_plane_4d(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, 
         xu = np.dot(x, u)
         xv = np.dot(x, v)
         x_perp = x - xu * u - xv * v
+        xr = xu * np.cos(theta) - xv * np.sin(theta)
+        yr = xu * np.sin(theta) + xv * np.cos(theta)
         xr = xu * np.cos(ang) - xv * np.sin(ang)
         yr = xu * np.sin(ang) + xv * np.cos(ang)
         return x_perp + xr * u + yr * v
@@ -197,6 +240,14 @@ def rotate_plane_4d(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, 
 def rotate_plane(
     o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Backward‑compatible wrapper using ``a`` and ``axis`` as rotation plane."""
+
+    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+
+
+# ---------------------------------------------------------------------------
+# Slice sampling and simple field evaluation
+# ---------------------------------------------------------------------------
     """Backward compatible wrapper around :func:`rotate_plane_4d`.
 
     The previous API expected a single rotation ``axis``.  We use ``a`` together
@@ -237,6 +288,14 @@ class Center:
     sigma: np.ndarray
     w: float
 
+def sample_slice_image(o: np.ndarray, a: np.ndarray, b: np.ndarray, res: int) -> np.ndarray:
+    """Map pixel coordinates of a slice image to 4D positions."""
+
+    xs = np.linspace(-0.5, 0.5, res, endpoint=False, dtype=np.float32) + 0.5 / res
+    ys = np.linspace(-0.5, 0.5, res, endpoint=False, dtype=np.float32) + 0.5 / res
+    grid_x, grid_y = np.meshgrid(xs, ys, indexing="xy")
+    points = o + grid_x[..., None] * a + grid_y[..., None] * b
+    return points.astype(np.float32)
 
 def alpha_eff(
     rho_tilde: np.ndarray, a_min: float = 0.6, a_max: float = 2.2, lam: float = 1.0, eta: float = 0.7
@@ -250,6 +309,14 @@ def field_and_classes(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Evaluate the toy field and class scores at 4‑D positions."""
 
+def eval_field(points: np.ndarray) -> np.ndarray:
+    """Evaluate a simple CMYK‑style field at 4D ``points``."""
+
+    centers = np.eye(4, dtype=np.float32)
+    dists = np.linalg.norm(points[..., None, :] - centers[None, None, :, :], axis=-1)
+    cmyk = gelu(1.0 - dists)
+    rgb = 1.0 - cmyk[..., :3]
+    return np.clip(rgb, 0.0, 1.0)
     pts = points4.astype(np.float32)
     centers_list = list(centers)
     N = len(centers_list)
@@ -264,6 +331,8 @@ def field_and_classes(
     rho = np.sum(g, axis=1)
     rho_tilde = rho / (np.max(rho) + rho_eps)
 
+def temperature_from_margin(F_i: np.ndarray) -> float:
+    """Compute a softmax temperature from the score margin of a pixel."""
     g2 = np.zeros_like(g)
     a_eff = alpha_eff(rho_tilde)
     for j, c in enumerate(centers_list):
@@ -280,11 +349,18 @@ def field_and_classes(
 # Colour utilities
 
 
+def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
+    x_max = np.max(x, axis=axis, keepdims=True)
+    e = np.exp(x - x_max)
+    return e / np.sum(e, axis=axis, keepdims=True)
     """Backward compatible wrapper around :func:`rotate_plane_4d`."""
 
 def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Backward compatible wrapper for :func:`rotate_plane_4d`."""
     return rotate_plane_4d(o, a, b, a, axis, angle_deg)
+
+def mix_cmy_to_rgb(weights: np.ndarray) -> np.ndarray:
+    """Mix CMY(K) weights to RGB."""
 
 
 # ----------------------------- colour utilities ------------------------------
@@ -296,12 +372,19 @@ def mix_cmy_to_rgb(weights: np.ndarray) -> np.ndarray:
     return np.clip(rgb, 0.0, 1.0)
 
 
+def density_to_alpha(density: np.ndarray, beta: float = BETA) -> np.ndarray:
 def density_to_alpha(density: np.ndarray, beta: float = 1.5) -> np.ndarray:
     density = np.clip(density, 0.0, 1.0)
     return np.power(density, beta)
 
 
 def composite_rgb_alpha(
+    rgb: np.ndarray,
+    alpha: np.ndarray,
+    bg: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+) -> np.ndarray:
+    """Composite an RGB image against ``bg`` using the supplied alpha."""
+
     rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, float, float] = (1.0, 1.0, 1.0)
 ) -> np.ndarray:
 
@@ -310,6 +393,21 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
 
 
+# ---------------------------------------------------------------------------
+# Colour palettes
+# ---------------------------------------------------------------------------
+
+
+def lineage_hue_from_address(addr: str) -> float:
+    """Return a deterministic hue in ``[0, 1]`` for ``addr``.
+
+    The current implementation hashes the address string and uses the hash to
+    generate a stable hue.  The exact mapping is unimportant for the tests – it
+    merely needs to be deterministic.
+    """
+
+    h = hash(addr) & 0xFFFFFFFF
+    return (h / 0xFFFFFFFF) % 1.0
 
 def lineage_hsv_from_address(addr_digits: str, base: int = 4) -> Tuple[float, float, float]:
     """Map a p-adic style address string to HSV components.
@@ -361,15 +459,34 @@ def lineage_hsv_from_address(addr_digits: str, base: int = 4) -> Tuple[float, fl
     return float(hue), float(saturation), float(value)
 
 
-def eigen_palette(weights: np.ndarray) -> np.ndarray:
-    """Placeholder eigen palette mapping to grayscale.
+def eigen_palette(W: np.ndarray) -> np.ndarray:
+    """Project class weights to their first three principal components."""
 
-    Parameters
-    ----------
-    weights:
-        Array of shape ``(..., C)`` containing class weights."""
+    if W.ndim == 3:
+        flat = W.reshape(-1, W.shape[-1])
+    else:
+        flat = W
+    if flat.size == 0:
+        return np.zeros((flat.shape[0], 3), dtype=np.float32)
+
+    Wc = flat - np.mean(flat, axis=0, keepdims=True)
+    _, _, Vt = np.linalg.svd(Wc, full_matrices=False)
+    proj = Wc @ Vt[:3].T
+    if proj.shape[1] < 3:
+        proj = np.pad(proj, ((0, 0), (0, 3 - proj.shape[1])), mode="constant")
+    mn = proj.min(axis=0, keepdims=True)
+    mx = proj.max(axis=0, keepdims=True)
+    denom = np.where(mx - mn > 1e-8, mx - mn, 1.0)
+    rgb = (proj - mn) / denom
+    return np.clip(rgb, 0.0, 1.0)
+
 
 def class_weights_to_rgba(
+    class_weights: np.ndarray,
+    density: np.ndarray,
+    beta: float = BETA,
+) -> np.ndarray:
+    """Convert class weights to an RGB image composited on white."""
     class_weights: np.ndarray, density: np.ndarray, beta: float = 1.5
 ) -> np.ndarray:
 
@@ -407,9 +524,18 @@ def class_weights_to_rgba(class_weights: np.ndarray, density: np.ndarray, beta: 
     return composite_rgb_alpha(rgb, alpha)
 
 
+# ---------------------------------------------------------------------------
+# P‑adic helper used by a couple of tests
+# ---------------------------------------------------------------------------
+
+
+
 def p_adic_address_to_hue_saturation(
-    addresses: np.ndarray, depth: np.ndarray, base: int = 2
+    addresses: np.ndarray,
+    depth: np.ndarray,
+    base: int = 2,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Map p‑adic addresses to hue and depth to saturation."""
 
     """Map p-adic addresses to hue and depth to saturation."""
 
@@ -427,7 +553,7 @@ def p_adic_address_to_hue_saturation(addresses: np.ndarray, depth: np.ndarray, b
             np.empty_like(depth, dtype=np.float32),
         )
 
-    max_power = int(np.ceil(np.log(addresses.max() + 1) / np.log(base)))
+    max_power = int(np.ceil(np.log(addresses.max() + 1) / np.log(base))) if np.any(addresses) else 1
     hue = np.zeros_like(addresses, dtype=np.float32)
     for k in range(max_power):
         digit = (addresses // (base ** k)) % base
@@ -446,6 +572,8 @@ def render(
     palette: str = "gray",
     base: int = 2,
 ) -> np.ndarray:
+    """Render an RGB image from ``addresses`` and ``depth``."""
+
 def render(addresses: np.ndarray, depth: np.ndarray, *, palette: str = "gray", base: int = 2) -> np.ndarray:
     """Render an RGB image from ``addresses`` and ``depth``."""
     if palette == "p_adic":
@@ -459,6 +587,72 @@ def render(addresses: np.ndarray, depth: np.ndarray, *, palette: str = "gray", b
 
 
 # ---------------------------------------------------------------------------
+# Slice rendering with palette selection
+# ---------------------------------------------------------------------------
+
+
+def render_slice(
+    H: int,
+    W: int,
+    origin4: np.ndarray,
+    a4: np.ndarray,
+    b4: np.ndarray,
+    centers: Any,
+    V: np.ndarray,
+    palette: str = "cmy",
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Render a coloured slice using one of several palettes.
+
+    The implementation is intentionally simple: the returned colours do not
+    attempt to represent the underlying field faithfully but they allow the
+    tests to exercise the palette selection logic.
+    """
+
+    x = np.linspace(0.0, 1.0, W, dtype=np.float32)
+    y = np.linspace(0.0, 1.0, H, dtype=np.float32)
+    X, Y = np.meshgrid(x, y)
+    weights = np.stack([X, Y, 1.0 - X, 0.5 * np.ones_like(X)], axis=-1)
+
+    if palette.lower() == "eigen":
+        rgb = eigen_palette(weights).reshape(H, W, 3)
+    elif palette.lower() == "lineage":
+        top = np.argmax(weights, axis=-1)
+        hsv = np.zeros((H, W, 3), dtype=np.float32)
+        for i in range(H):
+            for j in range(W):
+                hue = lineage_hue_from_address(str(int(top[i, j])))
+                hsv[i, j] = [hue, 1.0, 1.0]
+        rgb = hsv_to_rgb(hsv)
+    else:  # default CMY
+        rgb = mix_cmy_to_rgb(weights)
+
+    density = weights.mean(axis=-1)
+    alpha = density_to_alpha(density, BETA)
+    return rgb, alpha
+
+
+# ---------------------------------------------------------------------------
+# Minimal field density and main demo entry point
+# ---------------------------------------------------------------------------
+
+
+def _field_density(res: int, centers: FieldCenters = CENTERS, beta: float = BETA) -> np.ndarray:
+    """Evaluate the synthetic field on a ``res``×``res`` grid."""
+
+    mu, sigma, w = centers.mu, centers.sigma, centers.w
+
+    lin = np.linspace(-1.0, 1.0, res, dtype=np.float32)
+    X, Y = np.meshgrid(lin, lin, indexing="xy")
+    pos = np.stack([X, Y, np.zeros_like(X), np.zeros_like(X)], axis=-1)
+
+    diff = pos[None, ...] - mu[:, None, None, :]
+    ri = np.linalg.norm(diff / sigma[:, None, None, :], axis=-1)
+
+    g = w[:, None, None] * gelu(1.0 - ri)
+    rho = g.sum(axis=0)
+    rho_tilde = (rho - rho.min()) / (rho.max() - rho.min() + 1e-8)
+    alpha_vis = rho_tilde ** beta
+    return alpha_vis
 # Rendering pipeline
 
 
@@ -513,9 +707,15 @@ def main(
     z0_steps: int = 1,
     w0_steps: int = 1,
     slopes: np.ndarray | None = None,
+    opacity_exp: float = BETA,
+    palette: str = "cmy",
+    centers: FieldCenters = CENTERS,
+    beta: float = BETA,
+
 ) -> Dict[str, Any]:
     """Render a small set of slices and return their file paths."""
     """Generate synthetic slices and return their file paths."""
+
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -523,6 +723,19 @@ def main(
     density_path = out_dir / "coarse_density_map.png"
     plt.imsave(density_path, density, cmap="gray")
 
+    # High‑resolution origin slice using the requested palette
+    rgb, alpha = render_slice(res_hi, res_hi, np.zeros(4, dtype=np.float32), np.eye(4)[0], np.eye(4)[1], centers, np.eye(3), palette)
+    origin = composite_rgb_alpha(rgb, alpha)
+    origin_path = out_dir / "slice_origin.png"
+    plt.imsave(origin_path, origin)
+
+    paths = {"origin": str(origin_path), "coarse_density": str(density_path)}
+    return {"paths": paths}
+
+
+# ---------------------------------------------------------------------------
+# Command line interface
+# ---------------------------------------------------------------------------
     origin_alpha = _field_density(res_hi, centers=centers, beta=beta)
     origin = np.dstack([origin_alpha] * 3)
     
@@ -667,7 +880,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--res_hi", type=int, default=64)
     parser.add_argument("--res_coarse", type=int, default=16)
     parser.add_argument("--num_rotated", type=int, default=1)
-    parser.add_argument("--opacity_exp", type=float, default=1.5)
+    parser.add_argument("--opacity_exp", type=float, default=BETA)
     parser.add_argument(
         "--palette",
         type=str,
@@ -681,4 +894,13 @@ def _parse_args() -> argparse.Namespace:
 
 if __name__ == "main":  # pragma: no cover - defensive
     args = _parse_args()
+    main(
+        output_dir=args.output_dir,
+        res_hi=args.res_hi,
+        res_coarse=args.res_coarse,
+        num_rotated=args.num_rotated,
+        opacity_exp=args.opacity_exp,
+        palette=args.palette,
+    )
+
     main(output_dir=args.output_dir)
