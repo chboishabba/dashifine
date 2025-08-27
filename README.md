@@ -134,6 +134,15 @@ Sample output from a run of `Main_with_rotation.py`:
 
 ---
 
+## Manual QA
+
+Use this checklist to verify the renderer behaves as expected:
+
+- [ ] Run `python Main_with_rotation.py --output_dir examples --num_rotated 8` and confirm successive PNGs differ.
+- [ ] Verify translucent voids appear in low-density regions.
+- [ ] Place two centers close together to observe blended colours; separated centers yield crisp hues.
+- [ ] Expect CM/CMY primary colours for the three classes: cyan, magenta and yellow.
+
 Why not just use float32 everywhere?
 
 Because the space of possible slices is huge. Even in 4D:
