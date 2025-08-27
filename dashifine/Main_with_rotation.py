@@ -15,7 +15,7 @@ The script can also be executed directly to generate a couple of example images
 showcasing the different colour palettes.
 """
 
-"""Dashifine slice renderer with simple 4‑D geometry utilities.
+"""Dashifine slice renderer with simple 4-D geometry utilities.
 
 This module exposes a small set of functions that are exercised by the unit
 tests.  Only a toy procedural field is implemented – enough to verify that the
@@ -25,9 +25,9 @@ distinct images.
 
 """Core rendering utilities for the Dashifine demos.
 
-This module offers a grab‑bag of small helpers used by the tests.  It contains
+This module offers a grab-bag of small helpers used by the tests.  It contains
 basic maths primitives, simple colour utilities and a tiny demo ``main``
-function capable of rendering a few rotated 4‑D slices.  The implementation is
+function capable of rendering a few rotated 4-D slices.  The implementation is
 deliberately compact; it is not intended to be a full featured renderer.
 """
 
@@ -191,7 +191,7 @@ def temperature_from_margin(F_i: np.ndarray) -> float:
 
 def gelu(x: np.ndarray) -> np.ndarray:
     """Simple odd activation."""
-    """Light‑weight GELU approximation used in a few tests."""
+    """Light-weight GELU approximation used in a few tests."""
 
     """Simple odd activation used in tests."""
     return np.tanh(x)
@@ -252,7 +252,7 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
 
 
 # ---------------------------------------------------------------------------
-# 4‑D rotation and sampling utilities
+# 4-D rotation and sampling utilities
 def rotate_plane(
     o: np.ndarray,
     a: np.ndarray,
@@ -391,7 +391,7 @@ def rotate_plane(
 def sample_slice_points(
     H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray
 ) -> np.ndarray:
-    """Map a ``H x W`` pixel grid to 4‑D positions.
+    """Map a ``H x W`` pixel grid to 4-D positions.
 
     The slice is centred on ``origin4`` with basis vectors ``a4`` and ``b4``
     spanning the pixel grid in the range ``[-1, 1]`` along each axis.
@@ -437,10 +437,10 @@ def alpha_eff(
 def field_and_classes(
     points4: np.ndarray, centers: Iterable[Center], V: np.ndarray, rho_eps: float = 1e-6
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Evaluate the toy field and class scores at 4‑D positions."""
+    """Evaluate the toy field and class scores at 4-D positions."""
 
 def eval_field(points: np.ndarray) -> np.ndarray:
-    """Evaluate a simple CMYK‑style field at 4D ``points``."""
+    """Evaluate a simple CMYK-style field at 4D ``points``."""
 
     centers = np.eye(4, dtype=np.float32)
     dists = np.linalg.norm(points[..., None, :] - centers[None, None, :, :], axis=-1)
@@ -564,7 +564,7 @@ def field_and_classes(
     return rho, F
 
 def sample_slice_image(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray) -> np.ndarray:
-    """Map each pixel of an ``H``×``W`` grid to 4‑D coordinates.
+    """Map each pixel of an ``H``×``W`` grid to 4-D coordinates.
 
     The slice is defined by ``origin4`` and basis vectors ``a4`` and ``b4``. For
     pixel coordinates ``(u, v)`` in ``[-1, 1]`` the mapped point is
@@ -783,7 +783,7 @@ def class_weights_to_rgba(class_weights: np.ndarray, density: np.ndarray, beta: 
 # ---------------------------------------------------------------------------
 # p-adic visualisation utilities
 # ---------------------------------------------------------------------------
-# P‑adic helper used by a couple of tests
+# P-adic helper used by a couple of tests
 # ---------------------------------------------------------------------------
 
 
@@ -793,7 +793,7 @@ def p_adic_address_to_hue_saturation(
     depth: np.ndarray,
     base: int = 2,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Map p‑adic addresses to hue and depth to saturation."""
+    """Map p-adic addresses to hue and depth to saturation."""
 
     """Map p-adic addresses to hue and depth to saturation."""
 
@@ -1032,7 +1032,7 @@ def main(
     density_path = out_dir / "coarse_density_map.png"
     plt.imsave(density_path, density, cmap="gray")
 
-    # High‑resolution origin slice using the requested palette
+    # High-resolution origin slice using the requested palette
     rgb, alpha = render_slice(res_hi, res_hi, np.zeros(4, dtype=np.float32), np.eye(4)[0], np.eye(4)[1], centers, np.eye(3), palette)
     origin = composite_rgb_alpha(rgb, alpha)
     origin_path = out_dir / "slice_origin.png"
