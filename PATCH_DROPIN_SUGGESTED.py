@@ -3,7 +3,10 @@ from pathlib import Path
 from typing import Tuple, Dict, Any, List
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import hsv_to_rgb
 import numpy as np
+import hashlib
+import re
 
 
 # ---------------------------- activations & utils -----------------------------
@@ -154,11 +157,57 @@ def opacity_from_density(rho: np.ndarray, beta: float = 1.5) -> np.ndarray:
 
 # ---- palette hooks you can extend -------------------------------------------
 
-def lineage_hue_from_address(addr_digits: str) -> float:
+def lineage_hue_from_address(addr_digits: str, base: int = 4) -> Tuple[float, float, float]:
+    """Map a p-adic style address string to HSV components.
+
+    Parameters
+    ----------
+    addr_digits:
+        Address string. An optional fractional part encodes depth.  The
+        integer portion is split into a *prefix* (supervoxel) and an integer
+        suffix which is interpreted as base-``p`` digits.
+    base:
+        Base ``p`` used to interpret the integer suffix.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        ``(h, s, v)`` in the range ``[0, 1]``.
     """
-    TODO: hash left (supervoxel) digits for lineage hue; stub returns 0.0
-    """
-    return 0.0
+
+    # Separate fractional depth
+    if "." in addr_digits:
+        addr_main, frac_part = addr_digits.split(".", 1)
+    else:
+        addr_main, frac_part = addr_digits, ""
+
+    # Split prefix (supervoxel) and integer suffix
+    m = re.match(r"(\d*?)(\d+)$", addr_main)
+    if m:
+        prefix_digits, suffix_digits = m.group(1), m.group(2)
+    else:
+        prefix_digits, suffix_digits = "", addr_main
+
+    # Stable hue from prefix digits via SHA256 hash
+    if prefix_digits:
+        h = hashlib.sha256(prefix_digits.encode("utf-8")).hexdigest()
+        prefix_hue = int(h[:8], 16) / 0xFFFFFFFF
+    else:
+        prefix_hue = 0.0
+
+    # Interpret suffix digits as base-p digits contributing fractional hue
+    hue = prefix_hue
+    for k, ch in enumerate(reversed(suffix_digits)):
+        digit = min(int(ch), base - 1)
+        hue += digit / (base ** (k + 1))
+    hue = hue % 1.0
+
+    # Fractional depth controls saturation/value
+    depth = float(f"0.{frac_part}") if frac_part else 0.0
+    saturation = np.clip(depth, 0.0, 1.0)
+    value = 1.0 - 0.5 * depth
+
+    return float(hue), float(saturation), float(value)
 
 def eigen_palette(W: np.ndarray) -> np.ndarray:
     """
@@ -220,8 +269,15 @@ def render_slice(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.nda
     elif palette.lower() == "eigen":
         RGB = eigen_palette(Wc).reshape(H, W, 3)
     elif palette.lower() == "lineage":
-        # placeholder: use eigen fallback until lineage hues are wired
-        RGB = eigen_palette(Wc).reshape(H, W, 3)
+        top_idx = np.argmax(Wc, axis=1)
+        depth = np.max(Wc, axis=1)
+        hsv = np.zeros((Wc.shape[0], 3), dtype=np.float32)
+        for i, (idx, d) in enumerate(zip(top_idx, depth)):
+            d_clip = np.clip(d, 0.0, 0.999)
+            addr = f"{int(idx)}.{int(d_clip * 1000):03d}"
+            h, s, v = lineage_hue_from_address(addr)
+            hsv[i] = [h, s, v]
+        RGB = hsv_to_rgb(hsv).reshape(H, W, 3)
     else:
         # 2-class CM (Cyan/Magenta) or generic grayscale fallback
         if C >= 2:

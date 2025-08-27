@@ -150,6 +150,15 @@ def rotate_plane(
     o: np.ndarray,
     a: np.ndarray,
     b: np.ndarray,
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Backward-compatible wrapper around :func:`rotate_plane_4d`.
+
+    The previous API expected a single rotation ``axis``.  We map this to the
+    4D rotation utility by using ``a`` and ``axis`` as the spanning vectors.
+    This is a minimal shim to satisfy tests."""
+
     axis_perp: np.ndarray,
     angle_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -482,7 +491,8 @@ def main(
 
     origin_alpha = _field_density(res_hi, centers=centers, beta=beta)
     origin = np.dstack([origin_alpha] * 3)
-    """Generate example slices and return their file paths."""
+    
+    """Generate example slices and return their file paths"""
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     # Generate coarse density for reference
@@ -510,13 +520,14 @@ def main(
     density_hi = weights_hi.mean(axis=-1)
     alpha = density_to_alpha(density_hi, opacity_exp)
     origin = composite_rgb_alpha(rgb, alpha)
+    
     """Generate placeholder slices and basic rendering data.
 
     Besides writing placeholder images to ``output_dir`` this function now
     computes per-pixel class weights using a randomly initialized class loading
     matrix.  The returned dictionary therefore includes the generated paths as
-    well as ``density`` and ``class_weights`` arrays for further processing.
-    """
+    well as ``density`` and ``class_weights`` arrays for further processing.    """
+
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 

@@ -54,6 +54,7 @@ def test_p_adic_palette_maps_address_and_depth():
 
 
 
+
 def test_rotate_plane_rotates_basis():
     o = np.zeros(4, dtype=np.float32)
     a = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
@@ -70,4 +71,5 @@ def test_class_weights_to_rgba_fades_low_density():
     img = class_weights_to_rgba(weights, density, beta=1.0)
     assert np.allclose(img[0, 0], np.array([0.0, 1.0, 1.0]), atol=1e-6)
     assert np.allclose(img[0, 1], np.ones(3), atol=1e-6)
+
 
