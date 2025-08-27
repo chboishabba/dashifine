@@ -296,7 +296,7 @@ def rotate_plane_4-D(
 
     Any component of the inputs lying in this plane is rotated by
     ``angle_deg`` degrees while the orthogonal component is left unchanged.
-    """
+
 
     The plane is defined by two (not necessarily normalised) vectors ``u`` and
     ``v``. Any component of the inputs lying in this plane is rotated by
