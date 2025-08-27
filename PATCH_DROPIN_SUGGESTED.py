@@ -113,11 +113,35 @@ def lineage_hue_from_address(addr_digits: str) -> float:
 
 def eigen_palette(W: np.ndarray) -> np.ndarray:
     """
-    TODO: project class weights to 3D (PCA/UMAP/etc.) for RGB; stub uses top-class gray.
-    W: (HW,C)
+    Project class weights to three principal components for colouring.
+
+    Parameters
+    ----------
+    W : np.ndarray
+        Array of shape (HW, C) containing per-pixel class weights.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (HW, 3) with each principal component normalised to [0,1].
     """
-    top = np.max(W, axis=1, keepdims=True)
-    RGB = np.repeat(top, 3, axis=1)
+    if W.size == 0:
+        return np.zeros((0, 3), dtype=np.float32)
+
+    # Mean centre and perform SVD
+    Wc = W - np.mean(W, axis=0, keepdims=True)
+    _, _, Vt = np.linalg.svd(Wc, full_matrices=False)
+
+    # Project onto the first three principal components
+    proj = Wc @ Vt[:3].T  # (HW, min(3, C))
+    if proj.shape[1] < 3:
+        proj = np.pad(proj, ((0, 0), (0, 3 - proj.shape[1])), mode="constant")
+
+    # Normalise each component independently to [0,1]
+    min_vals = proj.min(axis=0, keepdims=True)
+    max_vals = proj.max(axis=0, keepdims=True)
+    denom = np.where(max_vals - min_vals > 1e-8, max_vals - min_vals, 1.0)
+    RGB = (proj - min_vals) / denom
     return np.clip(RGB, 0.0, 1.0)
 
 
@@ -170,6 +194,7 @@ def main(
     res_hi: int = 128,
     res_coarse: int = 32,   # still used for a quick diagnostic map
     num_rotated: int = 4,
+    num_time: int = 1,
     palette: str = "cmy",
 ) -> Dict[str, Any]:
     """Render actual Dashifine slices and return file paths."""
@@ -199,22 +224,27 @@ def main(
     V = np.eye(3, len(centers), dtype=np.float32)  # 3 classes from 3 centers
 
     paths: Dict[str, str] = {}
-    # origin slice (no rotation)
-    img0, A0 = render_slice(res_hi, res_hi, o, a, b, centers, V, palette=palette)
-    rgba0 = np.clip(np.dstack([img0, A0]), 0, 1)
-    origin_path = out_dir / "slice_origin.png"
-    plt.imsave(origin_path, rgba0)
-    paths["origin"] = str(origin_path)
+    for t in range(num_time):
+        # increment the origin's w coordinate across normalised time [0,1]
+        o_t = o.copy()
+        o_t[3] = float(t) / max(num_time - 1, 1)
 
-    # rotated slices
-    for i in range(num_rotated):
-        angle = float(i) * 360.0 / max(num_rotated, 1)
-        a_rot, b_rot = rotate_plane_4d(a, b, u, v, np.deg2rad(angle))
-        img, A = render_slice(res_hi, res_hi, o, a_rot, b_rot, centers, V, palette=palette)
-        rgba = np.clip(np.dstack([img, A]), 0, 1)
-        rot_path = out_dir / f"slice_rot_{int(angle):+d}deg.png"
-        plt.imsave(rot_path, rgba)
-        paths[f"rot_{angle:+.1f}"] = str(rot_path)
+        # origin slice for this time step
+        img0, A0 = render_slice(res_hi, res_hi, o_t, a, b, centers, V, palette=palette)
+        rgba0 = np.clip(np.dstack([img0, A0]), 0, 1)
+        origin_path = out_dir / f"slice_t{t}_origin.png"
+        plt.imsave(origin_path, rgba0)
+        paths[f"t{t}_origin"] = str(origin_path)
+
+        # rotated slices for this time step
+        for i in range(num_rotated):
+            angle = float(i) * 360.0 / max(num_rotated, 1)
+            a_rot, b_rot = rotate_plane_4d(a, b, u, v, np.deg2rad(angle))
+            img, A = render_slice(res_hi, res_hi, o_t, a_rot, b_rot, centers, V, palette=palette)
+            rgba = np.clip(np.dstack([img, A]), 0, 1)
+            rot_path = out_dir / f"slice_t{t}_rot_{int(angle):+d}deg.png"
+            plt.imsave(rot_path, rgba)
+            paths[f"t{t}_rot_{angle:+.1f}"] = str(rot_path)
 
     paths["coarse_density"] = str(density_path)
     return {"paths": paths}
@@ -226,6 +256,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--res_hi", type=int, default=128)
     parser.add_argument("--res_coarse", type=int, default=32)
     parser.add_argument("--num_rotated", type=int, default=4)
+    parser.add_argument("--num_time", type=int, default=1)
     parser.add_argument("--palette", type=str, default="cmy", choices=["cmy", "eigen", "lineage"])
     return parser.parse_args()
 
@@ -237,6 +268,7 @@ if __name__ == "__main__":
         res_hi=args.res_hi,
         res_coarse=args.res_coarse,
         num_rotated=args.num_rotated,
+        num_time=args.num_time,
         palette=args.palette,
     )
     # print(out)  # optional
