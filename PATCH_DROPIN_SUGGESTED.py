@@ -50,6 +50,55 @@ def rotate_plane_4d(a: np.ndarray, b: np.ndarray, u: np.ndarray, v: np.ndarray, 
     return orthonormal_frame(a2, b2)
 
 
+# -------------------------- neighbourhood statistics -------------------------
+
+def estimate_sigma_knn(points4: np.ndarray, k: int) -> np.ndarray:
+    """Estimate per-dimension scale from k-nearest neighbours.
+
+    For each point in ``points4`` the ``k`` closest neighbours (excluding the
+    point itself) are located.  The absolute difference along each axis is
+    measured and the median across the neighbours is returned as ``sigma``.
+
+    Parameters
+    ----------
+    points4:
+        Array of shape ``(N, 4)`` containing the 4D coordinates of the points
+        acting as centres.
+    k:
+        Number of neighbours to consider.  If fewer than ``k`` other points are
+        available, all remaining points are used.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape ``(N, 4)`` where each row corresponds to the estimated
+        ``sigma`` for the matching input point.
+    """
+
+    if points4.ndim != 2 or points4.shape[1] != 4:
+        raise ValueError("points4 must be of shape (N, 4)")
+
+    N = points4.shape[0]
+    sigmas = np.zeros_like(points4, dtype=np.float32)
+
+    for i in range(N):
+        # Compute squared Euclidean distances to all other points
+        diffs = points4 - points4[i]
+        dists = np.sum(diffs ** 2, axis=1)
+
+        # Exclude the point itself
+        order = np.argsort(dists)
+        order = order[order != i]
+        k_eff = min(k, N - 1)
+        if k_eff <= 0:
+            continue
+
+        neighbours = points4[order[:k_eff]]
+        sigmas[i] = np.median(np.abs(neighbours - points4[i]), axis=0)
+
+    return sigmas
+
+
 # ----------------------------- density & classes -----------------------------
 
 def alpha_eff(rho_tilde: np.ndarray, a_min: float = 0.6, a_max: float = 2.2, lam: float = 1.0, eta: float = 0.7) -> np.ndarray:
@@ -196,6 +245,7 @@ def main(
     num_rotated: int = 4,
     num_time: int = 1,
     palette: str = "cmy",
+    knn_k: int = 8,
 ) -> Dict[str, Any]:
     """Render actual Dashifine slices and return file paths."""
     out_dir = Path(output_dir)
@@ -216,11 +266,19 @@ def main(
     u, v = orthonormal_frame(u, v)
 
     # --- tiny demo scene: 3 centers, 3 classes (CMY) -------------------------
-    centers = [
-        {"mu": np.array([0.0, 0.0, 0.0, 0.0], np.float32), "sigma": np.array([0.7, 0.7, 0.7, 0.7], np.float32), "w": 1.0},
-        {"mu": np.array([0.8, 0.2, 0.0, 0.0], np.float32), "sigma": np.array([0.5, 0.7, 0.7, 0.7], np.float32), "w": 0.9},
-        {"mu": np.array([-0.4, 0.8, 0.0, 0.0], np.float32), "sigma": np.array([0.7, 0.5, 0.7, 0.7], np.float32), "w": 0.8},
-    ]
+    mus = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0],
+            [0.8, 0.2, 0.0, 0.0],
+            [-0.4, 0.8, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    weights = np.array([1.0, 0.9, 0.8], dtype=np.float32)
+    sigmas = estimate_sigma_knn(mus, knn_k)
+    centers = []
+    for mu, sigma, w in zip(mus, sigmas, weights):
+        centers.append({"mu": mu, "sigma": sigma.astype(np.float32), "w": float(w)})
     V = np.eye(3, len(centers), dtype=np.float32)  # 3 classes from 3 centers
 
     paths: Dict[str, str] = {}
@@ -258,6 +316,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--num_rotated", type=int, default=4)
     parser.add_argument("--num_time", type=int, default=1)
     parser.add_argument("--palette", type=str, default="cmy", choices=["cmy", "eigen", "lineage"])
+    parser.add_argument("--knn_k", type=int, default=8, help="k for k-NN sigma estimation")
     return parser.parse_args()
 
 
@@ -270,5 +329,6 @@ if __name__ == "__main__":
         num_rotated=args.num_rotated,
         num_time=args.num_time,
         palette=args.palette,
+        knn_k=args.knn_k,
     )
     # print(out)  # optional
