@@ -18,29 +18,19 @@ pip install -r requirements.txt
 Run the main script to perform the search and generate slices:
 
 ```bash
-python Main_with_rotation.py
+# default CMY palette
+python Main_with_rotation.py --output_dir examples --palette cmy
+
+# eigen palette
+python Main_with_rotation.py --output_dir examples --palette eigen
+
+# lineage palette
+python Main_with_rotation.py --output_dir examples --palette lineage
 ```
 
 All output images are written to `/mnt/data`, including a coarse density map and PNG files for the origin slice and each rotation.
 
-`PATCH_DROPIN_SUGGESTED.py` also supports temporal rendering.  Passing `--num_time N` steps the slice origin through N normalised
-time values (0 to 1), writing files like `slice_t0_rot_0deg.png` for each time step and rotation.
-
-### Palette options
-
-Use `--palette` to choose how class weights map to colour:
-
-* `cmy` (default) – map the first three classes to cyan, magenta and yellow.
-* `eigen` – visualise weights via the leading eigenvectors (grayscale placeholder).
-* `lineage` – assign hues by lineage using an HSV mapping.
-
-Example commands:
-
-```bash
-python Main_with_rotation.py --output_dir examples --palette cmy
-python Main_with_rotation.py --output_dir examples --palette eigen
-python Main_with_rotation.py --output_dir examples --palette lineage
-```
+`PATCH_DROPIN_SUGGESTED.py` also supports temporal rendering.  Passing `--num_time N` steps the slice origin through N normalised time values (0 to 1), writing files like `slice_t0_rot_0deg.png` for each time step and rotation.
 
 ### P-adic palette
 
@@ -51,19 +41,6 @@ The `render` function accepts two 2D arrays per pixel:
 
 Setting `palette="p_adic"` maps `addresses` to hue and `depth` to saturation,
 producing an RGB image via HSV conversion.
-
-### Palette options
-
-`Main_with_rotation.py` exposes a `--palette` flag to control colouring. The
-available choices are `cmy`, `lineage`, and `eigen`. For example, to render
-using the lineage palette:
-
-```bash
-python Main_with_rotation.py --output_dir examples --palette lineage
-```
-
-The default `cmy` palette blends cyan, magenta, and yellow, while `eigen`
-projects class weights onto principal components for colouring.
 
 ## Configuration
 `Main_with_rotation.py` exposes several constants at the top of the file that control behavior, such as:
@@ -165,11 +142,9 @@ Sample output from a run of `Main_with_rotation.py`:
 
 ## Manual QA
 
-Use this checklist to verify the renderer behaves as expected:
-
-- [ ] Run `python Main_with_rotation.py --output_dir examples --num_rotated 8` and confirm images change with angle.
-- [ ] Verify low-density regions fade transparent ("inverse Swiss cheese").
-- [ ] Move centres to see soft vs. crisp class boundaries.
+- Run `python Main_with_rotation.py --output_dir examples --num_rotated 8` and confirm successive images differ.
+- Observe translucent voids where density is low.
+- Move centres to compare soft vs. crisp class transitions.
 
 Why not just use float32 everywhere?
 
