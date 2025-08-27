@@ -14,6 +14,27 @@ import numpy as np
 import hashlib
 import re
 from matplotlib.colors import hsv_to_rgb
+from dataclasses import dataclass, field
+
+
+@dataclass
+class FieldCenters:
+    """Minimal container for synthetic field parameters.
+
+    This lightweight placeholder ensures the module imports during tests without
+    requiring the full demo configuration."""
+
+    mu: np.ndarray = field(
+        default_factory=lambda: np.zeros((0, 2), dtype=np.float32)
+    )
+    sigma: np.ndarray = field(
+        default_factory=lambda: np.ones((0, 2), dtype=np.float32)
+    )
+    w: np.ndarray = field(default_factory=lambda: np.ones(0, dtype=np.float32))
+
+
+BETA: float = 1.5
+CENTERS: FieldCenters = FieldCenters()
 
 # ------------------------------ basic primitives -----------------------------
 
@@ -32,18 +53,6 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
     return a, b
 
 
-def rotate_plane(
-    o: np.ndarray,
-    a: np.ndarray,
-    b: np.ndarray,
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate ``(o, a, b)`` around ``axis`` using :func:`rotate_plane_4d`."""
-
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
-
-
 def rotate_plane_4d(
     o: np.ndarray,
     a: np.ndarray,
@@ -55,11 +64,9 @@ def rotate_plane_4d(
     """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``.
 
     The plane is defined by two (not necessarily normalised) vectors ``u`` and
-    ``v``.  Any component of the inputs lying in this plane is rotated by
+    ``v``. Any component of the inputs lying in this plane is rotated by
     ``angle_deg`` degrees while the orthogonal component is left unchanged.
     """
-def rotate_plane_4d(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, v: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``."""
     u, v = orthonormalize(u, v)
     angle = np.deg2rad(angle_deg)
 
@@ -74,8 +81,13 @@ def rotate_plane_4d(o: np.ndarray, a: np.ndarray, b: np.ndarray, u: np.ndarray, 
     return _rotate(o), _rotate(a), _rotate(b)
 
 
-
-def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, angle_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def rotate_plane(
+    o: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Backward compatible wrapper for :func:`rotate_plane_4d`."""
     return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
