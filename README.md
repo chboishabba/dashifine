@@ -18,13 +18,19 @@ pip install -r requirements.txt
 Run the main script to perform the search and generate slices:
 
 ```bash
-python Main_with_rotation.py
+# default CMY palette
+python Main_with_rotation.py --output_dir examples --palette cmy
+
+# eigen palette
+python Main_with_rotation.py --output_dir examples --palette eigen
+
+# lineage palette
+python Main_with_rotation.py --output_dir examples --palette lineage
 ```
 
 All output images are written to `/mnt/data`, including a coarse density map and PNG files for the origin slice and each rotation.
 
-`PATCH_DROPIN_SUGGESTED.py` also supports temporal rendering.  Passing `--num_time N` steps the slice origin through N normalised
-time values (0 to 1), writing files like `slice_t0_rot_0deg.png` for each time step and rotation.
+`PATCH_DROPIN_SUGGESTED.py` also supports temporal rendering.  Passing `--num_time N` steps the slice origin through N normalised time values (0 to 1), writing files like `slice_t0_rot_0deg.png` for each time step and rotation.
 
 ### P-adic palette
 
@@ -49,6 +55,7 @@ python Main_with_rotation.py --output_dir examples --palette lineage
 The default `cmy` palette blends cyan, magenta, and yellow.  `lineage` assigns a
 stable hue based on each centre's address, while `eigen` currently falls back to
 grayscale until a PCA-based colouring is implemented.
+
 
 ## Configuration
 `Main_with_rotation.py` exposes several constants at the top of the file that control behavior, such as:
@@ -150,12 +157,9 @@ Sample output from a run of `Main_with_rotation.py`:
 
 ## Manual QA
 
-Use this checklist to verify the renderer behaves as expected:
-
-- [ ] Run `python Main_with_rotation.py --output_dir examples --num_rotated 8` and confirm successive PNGs differ.
-- [ ] Verify translucent voids appear in low-density regions.
-- [ ] Place two centers close together to observe blended colours; separated centers yield crisp hues.
-- [ ] Expect CM/CMY primary colours for the three classes: cyan, magenta and yellow.
+- Run `python Main_with_rotation.py --output_dir examples --num_rotated 8` and confirm successive images differ.
+- Observe translucent voids where density is low.
+- Move centres to compare soft vs. crisp class transitions.
 
 Why not just use float32 everywhere?
 
