@@ -9,36 +9,39 @@ import numpy as np
 
 @dataclass
 class FieldCenters:
-    """Parameterisation of a small synthetic field."""
+    """Parameterisation of anisotropic radial basis functions in 4D."""
 
     mu: np.ndarray
-    """Centre positions in the x/y plane with shape ``(N, 2)``."""
+    """Centre positions with shape ``(N, 4)``."""
 
     sigma: np.ndarray
-    """Per-axis standard deviations for anisotropic falloff, shape ``(N, 2)``."""
+    """Per-axis standard deviations for anisotropic falloff, shape ``(N, 4)``."""
 
     w: np.ndarray
     """Weights controlling each centre's contribution with shape ``(N,)``."""
 
 
+# Default centres used for examples and tests.  The ``z`` and ``w`` coordinates
+# are zero so that :func:`_field_density` can project them to the ``x``/``y``
+# plane without additional parameters.
 CENTERS = FieldCenters(
     mu=np.array(
         [
-            [-0.5, -0.5],
-            [0.5, -0.3],
-            [0.0, 0.6],
+            [0.0, 0.0, 0.0, 0.0],
+            [0.8, 0.0, 0.0, 0.0],
+            [0.0, 0.8, 0.0, 0.0],
         ],
         dtype=np.float32,
     ),
     sigma=np.array(
         [
-            [0.3, 0.2],
-            [0.25, 0.35],
-            [0.2, 0.25],
+            [0.6, 0.6, 0.6, 0.6],
+            [0.4, 0.7, 0.6, 0.6],
+            [0.6, 0.4, 0.6, 0.6],
         ],
         dtype=np.float32,
     ),
-    w=np.array([1.0, 0.8, 1.2], dtype=np.float32),
+    w=np.array([1.0, 0.8, 0.9], dtype=np.float32),
 )
 
 # Exponent for visibility normalisation
@@ -50,6 +53,52 @@ def gelu(x: np.ndarray) -> np.ndarray:
     return np.tanh(x)
 
 
+def field_and_classes(
+    points4: np.ndarray,
+    centers: FieldCenters,
+    V: np.ndarray,
+    rho_eps: float = 1e-6,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Evaluate density and class scores for 4D ``points4``.
+
+    Parameters
+    ----------
+    points4:
+        Array of shape ``(HW, 4)`` containing 4D sample positions.
+    centers:
+        ``FieldCenters`` describing kernel centres, anisotropy and weights.
+    V:
+        Class loading matrix of shape ``(C, N)``.
+    rho_eps:
+        Small constant to avoid division by zero when normalising ``rho``.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Total density ``rho`` with shape ``(HW,)`` and class scores ``F`` with
+        shape ``(HW, C)``.
+    """
+
+    mu, sigma, w = centers.mu, centers.sigma, centers.w
+
+    # Anisotropic distances r_i = ||(p - mu_i) / sigma_i||
+    diff = points4[:, None, :] - mu[None, :, :]  # (HW, N, 4)
+    ri = np.linalg.norm(diff / (sigma[None, :, :] + 1e-8), axis=-1)  # (HW, N)
+
+    # Pass 1: provisional alpha=1 to estimate rho_tilde
+    g = w[None, :] * gelu(1.0 - ri)
+    rho = np.sum(g, axis=1)
+    rho_tilde = rho / (np.max(rho) + rho_eps)
+
+    # Pass 2: mass-coupled sharpness via alpha_eff(rho_tilde)
+    alpha_eff = 1.0 / (1.0 + rho_tilde)  # (HW,)
+    g = w[None, :] * gelu(alpha_eff[:, None] * (1.0 - ri))
+
+    rho = np.sum(g, axis=1)
+    F = g @ V.T
+    return rho, F
+
+
 def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.ndarray, np.ndarray]:
     """Orthonormalize vectors ``a`` and ``b`` with Gram-Schmidt."""
     a = a.astype(np.float32)
@@ -58,65 +107,6 @@ def orthonormalize(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> Tuple[np.
     b = b - np.dot(a, b) * a
     b = b / (np.linalg.norm(b) + eps)
     return a, b
-
-
-def rotate_plane(
-    o: np.ndarray,
-    a: np.ndarray,
-    b: np.ndarray,
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Placeholder plane rotation that leaves inputs unchanged."""
-
-    return o, a, b
-    axis_perp: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate a 2D plane within 4D space around ``axis_perp``.
-
-    The basis vectors ``a`` and ``b`` spanning the plane are first
-    orthonormalised.  The component of ``axis_perp`` orthogonal to this plane
-    defines the rotation axis.  The plane is then rotated by ``angle_deg``
-    degrees around this axis.
-
-    Parameters
-    ----------
-    o : np.ndarray
-        Origin of the slice plane.
-    a, b : np.ndarray
-        Basis vectors spanning the plane.
-    axis_perp : np.ndarray
-        Vector defining the rotation axis (need not be normalised).
-    angle_deg : float
-        Rotation angle in degrees.
-
-    Returns
-    -------
-    tuple[np.ndarray, np.ndarray, np.ndarray]
-        The unchanged origin and the rotated basis vectors ``a`` and ``b``.
-    """
-
-    a1, b1 = orthonormalize(a, b)
-    n = axis_perp.astype(np.float32)
-    n = n - (n @ a1) * a1 - (n @ b1) * b1
-    n /= np.linalg.norm(n) + 1e-8
-    theta = np.deg2rad(angle_deg).astype(np.float32)
-    a_rot = np.cos(theta) * a1 + np.sin(theta) * n
-    a_rot, b_new = orthonormalize(a_rot, b1)
-    return o, a_rot, b_new
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward compatible wrapper for :func:`rotate_plane_4d`.
-
-    The rotation plane is defined by ``a`` and ``axis``.  This helper exists
-    only so older code and tests expecting ``rotate_plane`` continue to work.
-    """
-
-    return rotate_plane_4d(o, a, b, a, axis, angle_deg)
-
-
 def rotate_plane_4d(
     o: np.ndarray,
     a: np.ndarray,
@@ -125,19 +115,13 @@ def rotate_plane_4d(
     v: np.ndarray,
     angle_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``.
-
-    The plane is defined by two (not necessarily normalised) vectors ``u`` and
-    ``v``.  Any component of the inputs lying in this plane is rotated by
-    ``angle_deg`` degrees while the orthogonal component is left unchanged.
-    """
+    """Rotate ``o``, ``a`` and ``b`` in the plane spanned by ``u`` and ``v``."""
     u, v = orthonormalize(u, v)
     angle = np.deg2rad(angle_deg)
 
     def _rotate(x: np.ndarray) -> np.ndarray:
         xu = np.dot(x, u)
         xv = np.dot(x, v)
-        # Component orthogonal to the rotation plane remains unchanged
         x_perp = x - xu * u - xv * v
         xr = xu * np.cos(angle) - xv * np.sin(angle)
         yr = xu * np.sin(angle) + xv * np.cos(angle)
@@ -153,34 +137,7 @@ def rotate_plane(
     axis: np.ndarray,
     angle_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward-compatible wrapper around :func:`rotate_plane_4d`.
-
-    The previous API expected a single rotation ``axis``.  We map this to the
-    4D rotation utility by using ``a`` and ``axis`` as the spanning vectors.
-    This is a minimal shim to satisfy tests."""
-
-    axis_perp: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Rotate slice vectors using ``rotate_plane_4d``.
-
-    The slice ``(o, a, b)`` is rotated in the plane spanned by ``a`` and
-    ``axis_perp``.  This thin wrapper exists for backwards compatibility with
-    earlier APIs while delegating all work to :func:`rotate_plane_4d`.
-    """
-
-    return rotate_plane_4d(o, a, b, a, axis_perp, angle_deg)
-
-    axis: np.ndarray,
-    angle_deg: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Backward compatible wrapper around :func:`rotate_plane_4d`.
-
-    The wrapper rotates the slice plane spanned by ``a`` and ``b`` around the
-    provided ``axis`` by ``angle_deg`` degrees.  It delegates to
-    ``rotate_plane_4d`` by using ``a`` and ``axis`` as the rotation plane.
-    """
-
+    """Backward compatible wrapper around :func:`rotate_plane_4d`."""
     return rotate_plane_4d(o, a, b, a, axis, angle_deg)
 
 
@@ -332,21 +289,14 @@ def class_weights_to_rgba(
     Returns
     -------
     np.ndarray
-        RGB image in ``[0, 1]`` where all channels equal the top class weight.
+        Composited RGB image in ``[0, 1]``.
     """
 
-    top = np.max(weights, axis=-1, keepdims=True)
-    rgb = np.repeat(top, 3, axis=-1)
-    return np.clip(rgb, 0.0, 1.0)
-
-   """     Composited RGB image in ``[0, 1]``.
-    
-
     k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
-    weights = np.concatenate([class_weights[..., :3], k], axis=-1)
-    rgb = mix_cmy_to_rgb(weights)
+    cmyk = np.concatenate([class_weights[..., :3], k], axis=-1)
+    rgb = mix_cmy_to_rgb(cmyk)
     alpha = density_to_alpha(density, beta)
-    return composite_rgb_alpha(rgb, alpha)"""
+    return composite_rgb_alpha(rgb, alpha)
 
 
 def p_adic_address_to_hue_saturation(
@@ -449,8 +399,8 @@ def _field_density(
     pos = np.stack([X, Y], axis=-1)  # (res, res, 2)
 
     # Compute anisotropic distances r_i for each centre
-    diff = pos[None, ...] - mu[:, None, None, :]  # (N, res, res, 2)
-    ri = np.linalg.norm(diff / sigma[:, None, None, :], axis=-1)  # (N, res, res)
+    diff = pos[None, ...] - mu[:, None, None, :2]  # (N, res, res, 2)
+    ri = np.linalg.norm(diff / sigma[:, None, None, :2], axis=-1)  # (N, res, res)
 
     # Initial kernel contributions and normalised density
     g = w[:, None, None] * gelu(1.0 - ri)
