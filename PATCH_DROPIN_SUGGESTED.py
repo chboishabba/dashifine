@@ -110,11 +110,26 @@ def alpha_eff(rho_tilde: np.ndarray, a_min: float = 0.6, a_max: float = 2.2, lam
 
 def field_and_classes(points4: np.ndarray, centers: List[Dict[str, np.ndarray]], V: np.ndarray,
                       rho_eps: float = 1e-6) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    points4: (HW,4)
-    centers: list of { 'mu':(4,), 'sigma':(4,), 'w':float }
-    V: (C,N) class loadings (C classes, N centers)
-    returns: rho (HW,), F (HW,C)
+    """Evaluate density and per-class weights for ``points4``.
+
+    Parameters
+    ----------
+    points4:
+        Array of shape ``(HW, 4)`` with slice sample positions.
+    centers:
+        List of dictionaries describing Gaussian-like centres with keys
+        ``mu`` (4,), ``sigma`` (4,) and ``w`` (float).
+    V:
+        Class loadings of shape ``(C, N)`` mapping centre contributions to
+        ``C`` classes.
+    rho_eps:
+        Small constant to avoid division by zero when normalising ``rho``.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        ``rho`` of shape ``(HW,)`` and temperatured softmax weights ``W`` of
+        shape ``(HW, C)`` ready for colouring.
     """
     HW = points4.shape[0]
     N = len(centers)
@@ -137,7 +152,14 @@ def field_and_classes(points4: np.ndarray, centers: List[Dict[str, np.ndarray]],
 
     F = g2 @ V.T  # (HW,C)
     rho2 = np.sum(g2, axis=1)
-    return rho2, F
+
+    # Per-pixel temperature from top-2 margin and corresponding softmax
+    W = np.zeros_like(F)
+    for i in range(F.shape[0]):
+        tau = temperature_from_margin(F[i])
+        W[i] = softmax(F[i], tau=tau)
+
+    return rho2, W
 
 
 # ------------------------------- colour mapping ------------------------------
@@ -255,14 +277,9 @@ def sample_slice_points(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4:
 def render_slice(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray,
                  centers: List[Dict[str, np.ndarray]], V: np.ndarray, palette: str = "cmy") -> Tuple[np.ndarray, np.ndarray]:
     pts = sample_slice_points(H, W, origin4, a4, b4, scale=1.0)
-    rho, F = field_and_classes(pts, centers, V)
+    rho, Wc = field_and_classes(pts, centers, V)
 
-    # temperatured softmax per pixel
-    C = F.shape[1]
-    Wc = np.zeros_like(F)
-    for i in range(F.shape[0]):
-        tau = temperature_from_margin(F[i])
-        Wc[i] = softmax(F[i], tau=tau)
+    C = Wc.shape[1]
 
     if palette.lower() == "cmy" and C >= 3:
         RGB = cmy_from_weights(Wc[:, :3]).reshape(H, W, 3)
