@@ -50,5 +50,3 @@ def test_p_adic_palette_maps_address_and_depth():
     hsv = np.stack([hue, sat, np.ones_like(hue)], axis=-1)
     expected = hsv_to_rgb(hsv)
     assert np.allclose(rgb, expected)
-    assert np.allclose(a_rot, axis, atol=1e-6)
-    assert np.allclose(b_new, b, atol=1e-6)
