@@ -11,9 +11,34 @@ from pathlib import Path
 from typing import Tuple, Dict, Any
 
 import numpy as np
-import hashlib
-import re
 from matplotlib.colors import hsv_to_rgb
+
+try:  # pragma: no cover - allow running as script
+    from .palette import lineage_hue_from_address, eigen_palette
+except Exception:  # pragma: no cover
+    from palette import lineage_hue_from_address, eigen_palette
+
+from dataclasses import dataclass
+
+
+@dataclass
+class FieldCenters:
+    """Lightweight container for field centre parameters."""
+
+    mu: np.ndarray
+    sigma: np.ndarray
+    w: np.ndarray
+
+
+# Simple default centres used in tests and examples
+CENTERS = FieldCenters(
+    mu=np.zeros((1, 4), dtype=np.float32),
+    sigma=np.ones((1, 4), dtype=np.float32),
+    w=np.ones(1, dtype=np.float32),
+)
+
+# Default exponent for density-to-opacity mapping
+BETA = 1.5
 
 # ------------------------------ basic primitives -----------------------------
 
@@ -99,63 +124,6 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
 
 
-def lineage_hsv_from_address(addr_digits: str, base: int = 4) -> Tuple[float, float, float]:
-    """Map a p-adic style address string to HSV components.
-
-    The integer portion of ``addr_digits`` is interpreted as base-``p`` digits
-    contributing fractional hue.  Any leading digits form a *prefix* which is
-    hashed to provide a stable base hue.  An optional fractional part encodes
-    depth, modulating saturation and value.
-
-    Parameters
-    ----------
-    addr_digits:
-        Address string of the form ``"<prefix><digits>[.<depth>]"``.
-    base:
-        Base ``p`` used to interpret the integer suffix.
-
-    Returns
-    -------
-    tuple[float, float, float]
-        Normalised ``(h, s, v)`` components.
-    """
-
-    if "." in addr_digits:
-        addr_main, frac_part = addr_digits.split(".", 1)
-    else:
-        addr_main, frac_part = addr_digits, ""
-
-    m = re.match(r"(\d*?)(\d+)$", addr_main)
-    if m:
-        prefix_digits, suffix_digits = m.group(1), m.group(2)
-    else:
-        prefix_digits, suffix_digits = "", addr_main
-
-    if prefix_digits:
-        h = hashlib.sha256(prefix_digits.encode("utf-8")).hexdigest()
-        prefix_hue = int(h[:8], 16) / 0xFFFFFFFF
-    else:
-        prefix_hue = 0.0
-
-    hue = prefix_hue
-    for k, ch in enumerate(reversed(suffix_digits)):
-        digit = min(int(ch), base - 1)
-        hue += digit / (base ** (k + 1))
-    hue %= 1.0
-
-    depth = float(f"0.{frac_part}") if frac_part else 0.0
-    saturation = np.clip(depth, 0.0, 1.0)
-    value = 1.0 - 0.5 * depth
-    return float(hue), float(saturation), float(value)
-
-
-def eigen_palette(weights: np.ndarray) -> np.ndarray:
-    """Placeholder eigen palette mapping to grayscale.
-
-    Parameters
-    ----------
-    weights:
-        Array of shape ``(..., C)`` containing class weights."""
 
 def class_weights_to_rgba(
     class_weights: np.ndarray,
@@ -336,7 +304,7 @@ def main(
         num_classes = weights_hi.shape[-1]
         palette_rgb = np.zeros((num_classes, 3), dtype=np.float32)
         for i in range(num_classes):
-            h, s, v = lineage_hsv_from_address(str(i))
+            h, s, v = lineage_hue_from_address(str(i))
             palette_rgb[i] = hsv_to_rgb([h, s, v])
         weights_norm = weights_hi / (
             np.sum(weights_hi, axis=-1, keepdims=True) + 1e-8

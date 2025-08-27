@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from typing import Tuple, List
-import hashlib
-import re
 import numpy as np
 from matplotlib.colors import hsv_to_rgb
 
@@ -34,42 +32,66 @@ def _legacy_hsv(addr: str, base: int) -> Tuple[float, float, float]:
     return hue, sat, val
 
 
-def lineage_hsv_from_address(addr: str, base: int = 3) -> Tuple[float, float, float]:
-    """Map a lineage address string to HSV components.
+def lineage_hue_from_address(addr: str, base: int = 3) -> Tuple[float, float, float]:
+    """Map a lineage address string to placeholder HSV components.
 
-    When ``addr`` contains a fractional component the legacy mapping used by the
-    original tests is applied for backwards compatibility.  Otherwise the new
-    suffix-based mapping described in the task instructions is used.
+    The mapping is deterministic and provides a stable hue so that repeated
+    runs colour the same lineage consistently.  An optional fractional component
+    encodes *depth* and modulates saturation and value.  This implementation is
+    intentionally lightweight and does not attempt to match any formal p-adic
+    specification; it simply offers a stable colouring hook.
     """
 
     if "." in addr:
+        # Backwards compatible path matching the behaviour expected by the
+        # original unit tests.  The integer portion of the address encodes hue
+        # in reverse order and the fractional part determines saturation/value.
         return _legacy_hsv(addr, base)
 
-    # ------------------------------------------------------------------
-    # Extract digits, clamping to the valid range for the base.  This makes the
-    # function robust to slightly malformed addresses.
-    # ------------------------------------------------------------------
+    # Extract digits clamped to ``base`` to tolerate malformed input.
     digits: List[int] = [min(int(ch), base - 1) for ch in addr if ch.isdigit()]
     if not digits:
+        # Default to mid-level grey if no digits are present.
         return 0.0, 0.0, 0.5
 
-    # Stable hue from the last ``k`` digits
+    # Stable hue from the last ``k`` digits interpreted as a base-``p`` suffix.
     k = min(len(digits), 8)
     suffix = digits[-k:]
     int_suffix = 0
     for d in suffix:
         int_suffix = int_suffix * base + d
-    H = int_suffix / float(base ** k)
+    hue = int_suffix / float(base ** k)
 
-    # Fractional depth from address length
-    d = min(len(digits) / MAX_LINEAGE_DEPTH, 1.0)
-    S = d ** 0.8
-    V = 0.5 + 0.5 * d
-    return float(H), float(S), float(V)
+    # Saturation/value from depth measured by address length.
+    depth = min(len(digits) / MAX_LINEAGE_DEPTH, 1.0)
+    sat = depth ** 0.8
+    val = 0.5 + 0.5 * depth
+    return float(hue), float(sat), float(val)
+
+
+# Backwards compatibility ----------------------------------------------------
+def lineage_hsv_from_address(addr: str, base: int = 3) -> Tuple[float, float, float]:
+    """Backward compatible wrapper for :func:`lineage_hue_from_address`."""
+    return lineage_hue_from_address(addr, base=base)
 
 
 def lineage_rgb_from_address(addr: str, base: int = 3) -> Tuple[float, float, float]:
     """Convenience wrapper returning RGB for a lineage address."""
-    h, s, v = lineage_hsv_from_address(addr, base=base)
+    h, s, v = lineage_hue_from_address(addr, base=base)
     rgb = hsv_to_rgb([[h, s, v]])[0]
     return float(rgb[0]), float(rgb[1]), float(rgb[2])
+
+
+def eigen_palette(W: np.ndarray) -> np.ndarray:
+    """Temporary grayscale mapping for class weights.
+
+    Until a proper PCA-based colouring is implemented the *eigen* palette simply
+    collapses the class weight vectors to their mean and repeats the resulting
+    grayscale value across the three RGB channels.
+    """
+
+    if W.size == 0:
+        return np.zeros((0, 3), dtype=np.float32)
+
+    gray = np.mean(W, axis=-1, keepdims=True)
+    return np.repeat(gray, 3, axis=-1)

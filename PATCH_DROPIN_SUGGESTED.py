@@ -5,9 +5,7 @@ from typing import Tuple, Dict, Any, List
 import matplotlib.pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 import numpy as np
-import hashlib
-import re
-from dashifine.palette import lineage_hsv_from_address
+from dashifine.palette import lineage_hue_from_address, eigen_palette
 
 
 # ---------------------------- activations & utils -----------------------------
@@ -158,44 +156,6 @@ def opacity_from_density(rho: np.ndarray, beta: float = 1.5) -> np.ndarray:
 
 # ---- palette hooks you can extend -------------------------------------------
 
-# Re-export for backwards compatibility with earlier patch versions
-def lineage_hue_from_address(addr_digits: str, base: int = 3) -> Tuple[float, float, float]:
-    return lineage_hsv_from_address(addr_digits, base=base)
-
-def eigen_palette(W: np.ndarray) -> np.ndarray:
-    """
-    Project class weights to three principal components for colouring.
-
-    Parameters
-    ----------
-    W : np.ndarray
-        Array of shape (HW, C) containing per-pixel class weights.
-
-    Returns
-    -------
-    np.ndarray
-        Array of shape (HW, 3) with each principal component normalised to [0,1].
-    """
-    if W.size == 0:
-        return np.zeros((0, 3), dtype=np.float32)
-
-    # Mean centre and perform SVD
-    Wc = W - np.mean(W, axis=0, keepdims=True)
-    _, _, Vt = np.linalg.svd(Wc, full_matrices=False)
-
-    # Project onto the first three principal components
-    proj = Wc @ Vt[:3].T  # (HW, min(3, C))
-    if proj.shape[1] < 3:
-        proj = np.pad(proj, ((0, 0), (0, 3 - proj.shape[1])), mode="constant")
-
-    # Normalise each component independently to [0,1]
-    min_vals = proj.min(axis=0, keepdims=True)
-    max_vals = proj.max(axis=0, keepdims=True)
-    denom = np.where(max_vals - min_vals > 1e-8, max_vals - min_vals, 1.0)
-    RGB = (proj - min_vals) / denom
-    return np.clip(RGB, 0.0, 1.0)
-
-
 # ------------------------------- slice sampling ------------------------------
 
 def sample_slice_points(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.ndarray, scale: float = 1.0) -> np.ndarray:
@@ -223,7 +183,7 @@ def render_slice(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.nda
         RGB = eigen_palette(Wc).reshape(H, W, 3)
     elif palette.lower() == "lineage":
         if all("addr" in c for c in centers):
-            centre_hsv = [lineage_hsv_from_address(c.get("addr", "")) for c in centers]
+            centre_hsv = [lineage_hue_from_address(c.get("addr", "")) for c in centers]
             centre_rgb = hsv_to_rgb(np.array(centre_hsv, dtype=np.float32))
             top_idx = np.argmax(Wc, axis=1)
             RGB = centre_rgb[top_idx].reshape(H, W, 3)
@@ -234,7 +194,7 @@ def render_slice(H: int, W: int, origin4: np.ndarray, a4: np.ndarray, b4: np.nda
             for i, (idx, d) in enumerate(zip(top_idx, depth)):
                 d_clip = np.clip(d, 0.0, 0.999)
                 addr = f"{int(idx)}.{int(d_clip * 1000):03d}"
-                hsv[i] = lineage_hsv_from_address(addr)
+                hsv[i] = lineage_hue_from_address(addr)
             RGB = hsv_to_rgb(hsv).reshape(H, W, 3)
     else:
         # 2-class CM (Cyan/Magenta) or generic grayscale fallback

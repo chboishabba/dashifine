@@ -46,8 +46,9 @@ using the lineage palette:
 python Main_with_rotation.py --output_dir examples --palette lineage
 ```
 
-The default `cmy` palette blends cyan, magenta, and yellow, while `eigen`
-projects class weights onto principal components for colouring.
+The default `cmy` palette blends cyan, magenta, and yellow.  `lineage` assigns a
+stable hue based on each centre's address, while `eigen` currently falls back to
+grayscale until a PCA-based colouring is implemented.
 
 ## Configuration
 `Main_with_rotation.py` exposes several constants at the top of the file that control behavior, such as:
