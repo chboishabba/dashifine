@@ -53,6 +53,55 @@ def rotate_plane_4d(a: np.ndarray, b: np.ndarray, u: np.ndarray, v: np.ndarray, 
     return orthonormal_frame(a2, b2)
 
 
+# -------------------------- neighbourhood statistics -------------------------
+
+def estimate_sigma_knn(points4: np.ndarray, k: int) -> np.ndarray:
+    """Estimate per-dimension scale from k-nearest neighbours.
+
+    For each point in ``points4`` the ``k`` closest neighbours (excluding the
+    point itself) are located.  The absolute difference along each axis is
+    measured and the median across the neighbours is returned as ``sigma``.
+
+    Parameters
+    ----------
+    points4:
+        Array of shape ``(N, 4)`` containing the 4D coordinates of the points
+        acting as centres.
+    k:
+        Number of neighbours to consider.  If fewer than ``k`` other points are
+        available, all remaining points are used.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape ``(N, 4)`` where each row corresponds to the estimated
+        ``sigma`` for the matching input point.
+    """
+
+    if points4.ndim != 2 or points4.shape[1] != 4:
+        raise ValueError("points4 must be of shape (N, 4)")
+
+    N = points4.shape[0]
+    sigmas = np.zeros_like(points4, dtype=np.float32)
+
+    for i in range(N):
+        # Compute squared Euclidean distances to all other points
+        diffs = points4 - points4[i]
+        dists = np.sum(diffs ** 2, axis=1)
+
+        # Exclude the point itself
+        order = np.argsort(dists)
+        order = order[order != i]
+        k_eff = min(k, N - 1)
+        if k_eff <= 0:
+            continue
+
+        neighbours = points4[order[:k_eff]]
+        sigmas[i] = np.median(np.abs(neighbours - points4[i]), axis=0)
+
+    return sigmas
+
+
 # ----------------------------- density & classes -----------------------------
 
 def alpha_eff(rho_tilde: np.ndarray, a_min: float = 0.6, a_max: float = 2.2, lam: float = 1.0, eta: float = 0.7) -> np.ndarray:
@@ -162,11 +211,35 @@ def lineage_hue_from_address(addr_digits: str, base: int = 4) -> Tuple[float, fl
 
 def eigen_palette(W: np.ndarray) -> np.ndarray:
     """
-    TODO: project class weights to 3D (PCA/UMAP/etc.) for RGB; stub uses top-class gray.
-    W: (HW,C)
+    Project class weights to three principal components for colouring.
+
+    Parameters
+    ----------
+    W : np.ndarray
+        Array of shape (HW, C) containing per-pixel class weights.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (HW, 3) with each principal component normalised to [0,1].
     """
-    top = np.max(W, axis=1, keepdims=True)
-    RGB = np.repeat(top, 3, axis=1)
+    if W.size == 0:
+        return np.zeros((0, 3), dtype=np.float32)
+
+    # Mean centre and perform SVD
+    Wc = W - np.mean(W, axis=0, keepdims=True)
+    _, _, Vt = np.linalg.svd(Wc, full_matrices=False)
+
+    # Project onto the first three principal components
+    proj = Wc @ Vt[:3].T  # (HW, min(3, C))
+    if proj.shape[1] < 3:
+        proj = np.pad(proj, ((0, 0), (0, 3 - proj.shape[1])), mode="constant")
+
+    # Normalise each component independently to [0,1]
+    min_vals = proj.min(axis=0, keepdims=True)
+    max_vals = proj.max(axis=0, keepdims=True)
+    denom = np.where(max_vals - min_vals > 1e-8, max_vals - min_vals, 1.0)
+    RGB = (proj - min_vals) / denom
     return np.clip(RGB, 0.0, 1.0)
 
 
@@ -226,7 +299,9 @@ def main(
     res_hi: int = 128,
     res_coarse: int = 32,   # still used for a quick diagnostic map
     num_rotated: int = 4,
+    num_time: int = 1,
     palette: str = "cmy",
+    knn_k: int = 8,
 ) -> Dict[str, Any]:
     """Render actual Dashifine slices and return file paths."""
     out_dir = Path(output_dir)
@@ -247,30 +322,43 @@ def main(
     u, v = orthonormal_frame(u, v)
 
     # --- tiny demo scene: 3 centers, 3 classes (CMY) -------------------------
-    centers = [
-        {"mu": np.array([0.0, 0.0, 0.0, 0.0], np.float32), "sigma": np.array([0.7, 0.7, 0.7, 0.7], np.float32), "w": 1.0},
-        {"mu": np.array([0.8, 0.2, 0.0, 0.0], np.float32), "sigma": np.array([0.5, 0.7, 0.7, 0.7], np.float32), "w": 0.9},
-        {"mu": np.array([-0.4, 0.8, 0.0, 0.0], np.float32), "sigma": np.array([0.7, 0.5, 0.7, 0.7], np.float32), "w": 0.8},
-    ]
+    mus = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0],
+            [0.8, 0.2, 0.0, 0.0],
+            [-0.4, 0.8, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    weights = np.array([1.0, 0.9, 0.8], dtype=np.float32)
+    sigmas = estimate_sigma_knn(mus, knn_k)
+    centers = []
+    for mu, sigma, w in zip(mus, sigmas, weights):
+        centers.append({"mu": mu, "sigma": sigma.astype(np.float32), "w": float(w)})
     V = np.eye(3, len(centers), dtype=np.float32)  # 3 classes from 3 centers
 
     paths: Dict[str, str] = {}
-    # origin slice (no rotation)
-    img0, A0 = render_slice(res_hi, res_hi, o, a, b, centers, V, palette=palette)
-    rgba0 = np.clip(np.dstack([img0, A0]), 0, 1)
-    origin_path = out_dir / "slice_origin.png"
-    plt.imsave(origin_path, rgba0)
-    paths["origin"] = str(origin_path)
+    for t in range(num_time):
+        # increment the origin's w coordinate across normalised time [0,1]
+        o_t = o.copy()
+        o_t[3] = float(t) / max(num_time - 1, 1)
 
-    # rotated slices
-    for i in range(num_rotated):
-        angle = float(i) * 360.0 / max(num_rotated, 1)
-        a_rot, b_rot = rotate_plane_4d(a, b, u, v, np.deg2rad(angle))
-        img, A = render_slice(res_hi, res_hi, o, a_rot, b_rot, centers, V, palette=palette)
-        rgba = np.clip(np.dstack([img, A]), 0, 1)
-        rot_path = out_dir / f"slice_rot_{int(angle):+d}deg.png"
-        plt.imsave(rot_path, rgba)
-        paths[f"rot_{angle:+.1f}"] = str(rot_path)
+        # origin slice for this time step
+        img0, A0 = render_slice(res_hi, res_hi, o_t, a, b, centers, V, palette=palette)
+        rgba0 = np.clip(np.dstack([img0, A0]), 0, 1)
+        origin_path = out_dir / f"slice_t{t}_origin.png"
+        plt.imsave(origin_path, rgba0)
+        paths[f"t{t}_origin"] = str(origin_path)
+
+        # rotated slices for this time step
+        for i in range(num_rotated):
+            angle = float(i) * 360.0 / max(num_rotated, 1)
+            a_rot, b_rot = rotate_plane_4d(a, b, u, v, np.deg2rad(angle))
+            img, A = render_slice(res_hi, res_hi, o_t, a_rot, b_rot, centers, V, palette=palette)
+            rgba = np.clip(np.dstack([img, A]), 0, 1)
+            rot_path = out_dir / f"slice_t{t}_rot_{int(angle):+d}deg.png"
+            plt.imsave(rot_path, rgba)
+            paths[f"t{t}_rot_{angle:+.1f}"] = str(rot_path)
 
     paths["coarse_density"] = str(density_path)
     return {"paths": paths}
@@ -282,7 +370,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--res_hi", type=int, default=128)
     parser.add_argument("--res_coarse", type=int, default=32)
     parser.add_argument("--num_rotated", type=int, default=4)
+    parser.add_argument("--num_time", type=int, default=1)
     parser.add_argument("--palette", type=str, default="cmy", choices=["cmy", "eigen", "lineage"])
+    parser.add_argument("--knn_k", type=int, default=8, help="k for k-NN sigma estimation")
     return parser.parse_args()
 
 
@@ -293,6 +383,8 @@ if __name__ == "__main__":
         res_hi=args.res_hi,
         res_coarse=args.res_coarse,
         num_rotated=args.num_rotated,
+        num_time=args.num_time,
         palette=args.palette,
+        knn_k=args.knn_k,
     )
     # print(out)  # optional
