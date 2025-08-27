@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Tuple, Dict, Any
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import hsv_to_rgb
 import numpy as np
 
 
@@ -138,6 +139,75 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     """Composite an RGB image against a background using the supplied alpha."""
     bg_arr = np.asarray(bg, dtype=np.float32)
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
+
+
+def p_adic_address_to_hue_saturation(
+    addresses: np.ndarray, depth: np.ndarray, base: int = 2
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Map p-adic addresses to hue and depth to saturation.
+
+    Parameters
+    ----------
+    addresses:
+        Integer array giving the p-adic address for each pixel.
+    depth:
+        Float array giving the depth for each pixel.
+    base:
+        Base ``p`` of the p-adic numbers.
+
+    Returns
+    -------
+    hue, saturation : tuple[np.ndarray, np.ndarray]
+        Normalised hue and saturation arrays in ``[0, 1]``.
+    """
+
+    addresses = addresses.astype(np.int64)
+    depth = depth.astype(np.float32)
+    if addresses.size == 0:
+        return (
+            np.empty_like(addresses, dtype=np.float32),
+            np.empty_like(depth, dtype=np.float32),
+        )
+
+    max_power = int(np.ceil(np.log(addresses.max() + 1) / np.log(base)))
+    hue = np.zeros_like(addresses, dtype=np.float32)
+    for k in range(max_power):
+        digit = (addresses // (base ** k)) % base
+        hue += digit / (base ** (k + 1))
+
+    saturation = (
+        depth / (np.max(depth) + 1e-8) if np.any(depth) else np.zeros_like(depth)
+    )
+    return hue, saturation
+
+
+def render(
+    addresses: np.ndarray,
+    depth: np.ndarray,
+    *,
+    palette: str = "gray",
+    base: int = 2,
+) -> np.ndarray:
+    """Render an RGB image from ``addresses`` and ``depth``.
+
+    ``addresses`` and ``depth`` supply per-pixel p-adic addresses and depth
+    values respectively. When ``palette='p_adic'`` the addresses determine the
+    hue and the depth controls saturation. Other palettes fall back to a simple
+    grayscale mapping of ``depth``.
+
+    Returns
+    -------
+    np.ndarray
+        RGB image with values in ``[0, 1]``.
+    """
+
+    if palette == "p_adic":
+        hue, sat = p_adic_address_to_hue_saturation(addresses, depth, base)
+        hsv = np.stack([hue, sat, np.ones_like(hue)], axis=-1)
+        return hsv_to_rgb(hsv)
+
+    value = depth / (np.max(depth) + 1e-8) if np.any(depth) else np.zeros_like(depth)
+    return np.stack([value, value, value], axis=-1)
 
 
 def main(
