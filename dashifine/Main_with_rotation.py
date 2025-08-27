@@ -31,6 +31,27 @@ def rotate_plane(o: np.ndarray, a: np.ndarray, b: np.ndarray, axis: np.ndarray, 
     return o, a_rot, b_new
 
 
+def margin_temperature(scores: np.ndarray) -> np.ndarray:
+    """Compute a simple margin-dependent temperature.
+
+    The temperature is ``1 + exp(-margin)`` where ``margin`` is the gap between
+    the highest and second highest class score for each pixel.
+    The returned temperature has shape ``scores[..., 0:1]`` for easy broadcasting.
+    """
+
+    sorted_scores = np.sort(scores, axis=-1)
+    margin = sorted_scores[..., -1] - sorted_scores[..., -2]
+    tau = 1.0 + np.exp(-margin)
+    return tau[..., None]
+
+
+def softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:
+    """Numerically stable softmax."""
+    x_max = np.max(x, axis=axis, keepdims=True)
+    e = np.exp(x - x_max)
+    return e / np.sum(e, axis=axis, keepdims=True)
+
+
 def main(
     output_dir: str | Path,
     res_hi: int = 64,
@@ -40,7 +61,13 @@ def main(
     w0_steps: int = 1,
     slopes: np.ndarray | None = None,
 ) -> Dict[str, Any]:
-    """Generate placeholder slices and return their file paths."""
+    """Generate placeholder slices and basic rendering data.
+
+    Besides writing placeholder images to ``output_dir`` this function now
+    computes per-pixel class weights using a randomly initialized class loading
+    matrix.  The returned dictionary therefore includes the generated paths as
+    well as ``density`` and ``class_weights`` arrays for further processing.
+    """
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -67,7 +94,25 @@ def main(
         plt.imsave(rot_path, img)
         paths[f"rot_{angle:+.1f}"] = str(rot_path)
 
-    return {"paths": paths}
+    # ------------------------------------------------------------------
+    # Simple class weight computation for each coarse pixel
+    # ------------------------------------------------------------------
+    xs, ys = np.meshgrid(
+        np.linspace(-1.0, 1.0, res_coarse, dtype=np.float32),
+        np.linspace(-1.0, 1.0, res_coarse, dtype=np.float32),
+        indexing="ij",
+    )
+    g = np.stack([xs, ys], axis=-1).reshape(-1, 2)
+    # Random class loading matrix ``V``
+    num_classes = 3
+    V = np.random.randn(num_classes, g.shape[-1]).astype(np.float32)
+    F = g @ V.T
+    F = F.reshape(res_coarse, res_coarse, num_classes)
+
+    tau = margin_temperature(F)
+    class_weights = softmax(F / tau, axis=-1)
+
+    return {"paths": paths, "density": density, "class_weights": class_weights}
 
 
 def _parse_args() -> argparse.Namespace:
