@@ -53,6 +53,7 @@ def test_p_adic_palette_maps_address_and_depth():
     assert np.allclose(rgb, expected)
 
 
+
 def test_rotate_plane_rotates_basis():
     o = np.zeros(4, dtype=np.float32)
     a = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)

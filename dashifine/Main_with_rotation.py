@@ -64,6 +64,12 @@ def rotate_plane(
     o: np.ndarray,
     a: np.ndarray,
     b: np.ndarray,
+    axis: np.ndarray,
+    angle_deg: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Placeholder plane rotation that leaves inputs unchanged."""
+
+    return o, a, b
     axis_perp: np.ndarray,
     angle_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -267,6 +273,31 @@ def composite_rgb_alpha(rgb: np.ndarray, alpha: np.ndarray, bg: Tuple[float, flo
     return rgb * alpha[..., None] + bg_arr * (1.0 - alpha[..., None])
 
 
+def lineage_hue_from_address(addr_digits: str) -> float:
+    """Placeholder lineage hue mapping.
+
+    Parameters
+    ----------
+    addr_digits:
+        String representation of the p-adic address.
+
+    Returns
+    -------
+    float
+        Hue value in ``[0, 1]``; stub returns ``0.0``.
+    """
+
+    return 0.0
+
+
+def eigen_palette(weights: np.ndarray) -> np.ndarray:
+    """Placeholder eigen palette mapping to grayscale.
+
+    Parameters
+    ----------
+    weights:
+        Array of shape ``(..., C)`` containing class weights."""
+
 def class_weights_to_rgba(
     class_weights: np.ndarray,
     density: np.ndarray,
@@ -292,14 +323,21 @@ def class_weights_to_rgba(
     Returns
     -------
     np.ndarray
-        Composited RGB image in ``[0, 1]``.
+        RGB image in ``[0, 1]`` where all channels equal the top class weight.
     """
+
+    top = np.max(weights, axis=-1, keepdims=True)
+    rgb = np.repeat(top, 3, axis=-1)
+    return np.clip(rgb, 0.0, 1.0)
+
+   """     Composited RGB image in ``[0, 1]``.
+    
 
     k = np.zeros(class_weights.shape[:2] + (1,), dtype=class_weights.dtype)
     weights = np.concatenate([class_weights[..., :3], k], axis=-1)
     rgb = mix_cmy_to_rgb(weights)
     alpha = density_to_alpha(density, beta)
-    return composite_rgb_alpha(rgb, alpha)
+    return composite_rgb_alpha(rgb, alpha)"""
 
 
 def p_adic_address_to_hue_saturation(
@@ -430,6 +468,7 @@ def main(
     w0_steps: int = 1,
     slopes: np.ndarray | None = None,
     opacity_exp: float = 1.5,
+    palette: str = "cmy",
     centers: FieldCenters = CENTERS,
     beta: float = BETA,
 ) -> Dict[str, Any]:
@@ -460,7 +499,14 @@ def main(
     yh = np.linspace(0.0, 1.0, res_hi, dtype=np.float32)
     Xh, Yh = np.meshgrid(xh, yh)
     weights_hi = np.stack([Xh, Yh, 1.0 - Xh, 0.5 * np.ones_like(Xh)], axis=-1)
-    rgb = mix_cmy_to_rgb(weights_hi)
+    if palette == "cmy":
+        rgb = mix_cmy_to_rgb(weights_hi)
+    elif palette == "eigen":
+        rgb = eigen_palette(weights_hi)
+    elif palette == "lineage":
+        rgb = eigen_palette(weights_hi)
+    else:
+        rgb = mix_cmy_to_rgb(weights_hi)
     density_hi = weights_hi.mean(axis=-1)
     alpha = density_to_alpha(density_hi, opacity_exp)
     origin = composite_rgb_alpha(rgb, alpha)
@@ -547,6 +593,13 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--res_coarse", type=int, default=16)
     parser.add_argument("--num_rotated", type=int, default=1)
     parser.add_argument("--opacity_exp", type=float, default=1.5)
+    parser.add_argument(
+        "--palette",
+        type=str,
+        default="cmy",
+        choices=["cmy", "lineage", "eigen"],
+        help="Colour palette for slice rendering",
+    )
     return parser.parse_args()
 
 
@@ -558,4 +611,5 @@ if __name__ == "__main__":
         res_coarse=args.res_coarse,
         num_rotated=args.num_rotated,
         opacity_exp=args.opacity_exp,
+        palette=args.palette,
     )
