@@ -3,6 +3,10 @@
 This module provides a :func:`cmyk_slice_rgba` helper that evaluates the
 four‑class field (cyan, magenta, yellow, black) on a 2‑D slice of 4‑D space
 and returns an RGBA image where the alpha channel encodes overall field
+strength.  A demo at the bottom of the file now saves two sets of 360 frames:
+
+1. A rotation around the unit circle in the ``(z, w)`` plane.
+2. A top‑to‑bottom scan that sweeps ``w`` from +1 to −1 while ``z`` stays fixed.
 strength.  A small demo at the bottom of the file saves 360 frames by
 traversing a unit circle in the ``(z, w)`` plane.
 """
@@ -101,6 +105,16 @@ def cmyk_slice_rgba(
 
 
 # ------------------------------
+# Demo: 360‑frame rotation and vertical scan
+# ------------------------------
+
+def main() -> None:
+    out_dir_rot = "cmyk_rgba_rot"
+    out_dir_scan = "cmyk_rgba_scan"
+    os.makedirs(out_dir_rot, exist_ok=True)
+    os.makedirs(out_dir_scan, exist_ok=True)
+
+    # 1) rotation around unit circle in z–w plane
 # Demo: produce 360 RGBA slices
 # ------------------------------
 
@@ -113,6 +127,21 @@ def main() -> None:
         z0 = np.cos(theta)
         w0 = np.sin(theta)
         img = cmyk_slice_rgba(z0, w0)
+        plt.imsave(f"{out_dir_rot}/slice_{i:03d}.png", img)
+
+    # 2) top-to-bottom scan: sweep w from +1 to -1 at fixed z=0
+    for i in range(360):
+        w0 = 1 - 2 * (i / 359)
+        z0 = 0.0
+        img = cmyk_slice_rgba(z0, w0)
+        plt.imsave(f"{out_dir_scan}/slice_{i:03d}.png", img)
+
+    print(
+        "360 RGBA slices saved to '{}' and '{}'".format(
+            f"{out_dir_rot}/slice_###.png", f"{out_dir_scan}/slice_###.png"
+        )
+    )
+======
         plt.imsave(f"{out_dir}/slice_{i:03d}.png", img)
 
     print(f"360 RGBA slices saved to '{out_dir}/slice_###.png'")
