@@ -1,4 +1,6 @@
 # dashifine
+[ezgif-7ceb35efa2fd34.webp.webm](https://github.com/user-attachments/assets/15f6a2c2-87ac-41d4-a654-493ded4c5835)
+[ezgif-156cc0aacb3816.webp.webm](https://github.com/user-attachments/assets/dedef694-c4c0-4197-bd27-beb0ecaf1607)
 
 This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.  The fourth dimension `w` represents normalised time, so the renderer can step through time to produce sequences of slices.
 
