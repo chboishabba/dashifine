@@ -1,6 +1,12 @@
 # dashifine
 ![ezgif-3f0c8b20812b0d](https://github.com/user-attachments/assets/58af7f55-ac1c-406b-901e-95fd49ca3ed4)
+<img width="1145" height="1168" alt="1d44df91-9532-4698-b651-052d0916f1f6" src="https://github.com/user-attachments/assets/f6817717-261a-43d7-a7e5-5d7c3da7853f" />
+<img width="1146" height="1168" alt="addc21ad-031c-4a17-a5e7-6c0be56acd7d" src="https://github.com/user-attachments/assets/35dbed02-8545-4537-9ff6-dc9a06e534b1" />
+<img width="917" height="934" alt="pants_example_fixed" src="https://github.com/user-attachments/assets/e004af2d-d85c-4b4b-a650-1e9bed3633cc" />
+<img width="1581" height="1630" alt="output" src="https://github.com/user-attachments/assets/5e69925c-bb19-4fca-abd6-6247b26bb5f8" />
+<img width="1508" height="1476" alt="output(1)" src="https://github.com/user-attachments/assets/8a62cb7b-a0dc-4729-8eba-e315d8b27540" />
 <img width="6715" height="10737" alt="NotebookLM Mind Map(3)" src="https://github.com/user-attachments/assets/5ed0fefa-29cc-4747-a918-e9178f579a81" />
+
 
 
 This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.  The fourth dimension `w` represents normalised time, so the renderer can step through time to produce sequences of slices.
