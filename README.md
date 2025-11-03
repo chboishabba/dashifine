@@ -6,6 +6,8 @@
 <img width="1581" height="1630" alt="output" src="https://github.com/user-attachments/assets/5e69925c-bb19-4fca-abd6-6247b26bb5f8" />
 <img width="1508" height="1476" alt="output(1)" src="https://github.com/user-attachments/assets/8a62cb7b-a0dc-4729-8eba-e315d8b27540" />
 <img width="1097" height="1146" alt="generalized_pants_nw1_nl2" src="https://github.com/user-attachments/assets/7c445993-2916-402d-b366-f546ef0aba6a" />
+<img width="1445" height="1468" alt="n_pants_with_seams" src="https://github.com/user-attachments/assets/a4336306-d4b8-4fbc-aeee-b79c683a10e5" />
+<img width="1480" height="1468" alt="nwaists_nlegs_pants" src="https://github.com/user-attachments/assets/73237f25-1eae-4e19-aae9-b1d69122dca5" />
 
 ---
 
