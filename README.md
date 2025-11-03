@@ -1,15 +1,7 @@
 # dashifine
-[ezgif-7ceb35efa2fd34.webp.webm](https://github.com/user-attachments/assets/15f6a2c2-87ac-41d4-a654-493ded4c5835)
-[ezgif-156cc0aacb3816.webp.webm](https://github.com/user-attachments/assets/dedef694-c4c0-4197-bd27-beb0ecaf1607)
-<video width="480" height="270" controls>
-  <source src="https://github.com/user-attachments/assets/15f6a2c2-87ac-41d4-a654-493ded4c5835" type="video/webm">
-  Your browser does not support the video tag.
-</video>
+![ezgif-3f0c8b20812b0d](https://github.com/user-attachments/assets/58af7f55-ac1c-406b-901e-95fd49ca3ed4)
+<img width="6715" height="10737" alt="NotebookLM Mind Map(3)" src="https://github.com/user-attachments/assets/5ed0fefa-29cc-4747-a918-e9178f579a81" />
 
-<video width="480" height="270" controls>
-  <source src="https://github.com/user-attachments/assets/dedef694-c4c0-4197-bd27-beb0ecaf1607" type="video/webm">
-  Your browser does not support the video tag.
-</video>
 
 This project searches a procedurally defined 4D color field for interesting 2D slices and renders them as images.  It evaluates candidate slices, refines the best result, and writes the chosen slice along with several rotated variants.  The fourth dimension `w` represents normalised time, so the renderer can step through time to produce sequences of slices.
 
