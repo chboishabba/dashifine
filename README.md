@@ -5,8 +5,12 @@
 <img width="917" height="934" alt="pants_example_fixed" src="https://github.com/user-attachments/assets/e004af2d-d85c-4b4b-a650-1e9bed3633cc" />
 <img width="1581" height="1630" alt="output" src="https://github.com/user-attachments/assets/5e69925c-bb19-4fca-abd6-6247b26bb5f8" />
 <img width="1508" height="1476" alt="output(1)" src="https://github.com/user-attachments/assets/8a62cb7b-a0dc-4729-8eba-e315d8b27540" />
-<img width="6715" height="10737" alt="NotebookLM Mind Map(3)" src="https://github.com/user-attachments/assets/5ed0fefa-29cc-4747-a918-e9178f579a81" />
 <img width="1097" height="1146" alt="generalized_pants_nw1_nl2" src="https://github.com/user-attachments/assets/7c445993-2916-402d-b366-f546ef0aba6a" />
+
+---
+
+
+<img width="6715" height="10737" alt="NotebookLM Mind Map(3)" src="https://github.com/user-attachments/assets/5ed0fefa-29cc-4747-a918-e9178f579a81" />
 
 
 
