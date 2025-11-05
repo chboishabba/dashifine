@@ -1,23 +1,14 @@
 # dashifine
-![ezgif-3f0c8b20812b0d](https://github.com/user-attachments/assets/58af7f55-ac1c-406b-901e-95fd49ca3ed4)
-<img width="1145" height="1168" alt="1d44df91-9532-4698-b651-052d0916f1f6" src="https://github.com/user-attachments/assets/f6817717-261a-43d7-a7e5-5d7c3da7853f" />
-<img width="1146" height="1168" alt="addc21ad-031c-4a17-a5e7-6c0be56acd7d" src="https://github.com/user-attachments/assets/35dbed02-8545-4537-9ff6-dc9a06e534b1" />
-<img width="917" height="934" alt="pants_example_fixed" src="https://github.com/user-attachments/assets/e004af2d-d85c-4b4b-a650-1e9bed3633cc" />
-<img width="1581" height="1630" alt="output" src="https://github.com/user-attachments/assets/5e69925c-bb19-4fca-abd6-6247b26bb5f8" />
-<img width="1508" height="1476" alt="output(1)" src="https://github.com/user-attachments/assets/8a62cb7b-a0dc-4729-8eba-e315d8b27540" />
-<img width="1097" height="1146" alt="generalized_pants_nw1_nl2" src="https://github.com/user-attachments/assets/7c445993-2916-402d-b366-f546ef0aba6a" />
-<img width="1445" height="1468" alt="n_pants_with_seams" src="https://github.com/user-attachments/assets/a4336306-d4b8-4fbc-aeee-b79c683a10e5" />
-<img width="1480" height="1468" alt="nwaists_nlegs_pants" src="https://github.com/user-attachments/assets/73237f25-1eae-4e19-aae9-b1d69122dca5" />
-<img width="1386" height="881" alt="output(3)" src="https://github.com/user-attachments/assets/bed9765d-6aa3-4d79-ac13-d6437e53498a" />
-<img width="1386" height="881" alt="output(4)" src="https://github.com/user-attachments/assets/87802c0e-5930-48a0-b2e2-64fea7f3a04d" />
-<img width="1402" height="881" alt="output(5)" src="https://github.com/user-attachments/assets/634498ea-17df-427a-bbcc-b9488f3a59a2" />
-<img width="1082" height="881" alt="output(6)" src="https://github.com/user-attachments/assets/b46d8a3b-89ae-42fc-be3d-4d13f26372b1" />
-<img width="1564" height="881" alt="output(7)" src="https://github.com/user-attachments/assets/25db6e56-ced7-4830-bae4-086926235191" />
-<img width="968" height="881" alt="output(8)" src="https://github.com/user-attachments/assets/49dfda5b-d200-4203-867b-7887df988b16" />
-<img width="1131" height="881" alt="output(9)" src="https://github.com/user-attachments/assets/37cc9322-a19c-4dc1-8269-e3e0b780ef24" />
-<img width="1237" height="881" alt="output(10)" src="https://github.com/user-attachments/assets/8a9a22d4-af20-4f77-af1b-d9146d94eaef" />
-<img width="1222" height="881" alt="output(11)" src="https://github.com/user-attachments/assets/00566baa-6589-4712-9e5a-d776b1771aa5" /><img width="1105" height="881" alt="output(12)" src="https://github.com/user-attachments/assets/b9ad1b98-0359-415d-9780-8f41d735320f" />
 
+| <p align="center">![ezgif-3f0c8b20812b0d](https://github.com/user-attachments/assets/58af7f55-ac1c-406b-901e-95fd49ca3ed4)</p> 
+| Image 1 | Image 2 | Image 3 |
+| :---: | :---: | :---: |
+| <img width="300" alt="1d44df91-9532-4698-b651-052d0916f1f6" src="https://github.com/user-attachments/assets/f6817717-261a-43d7-a7e5-5d7c3da7853f" /> | <img width="300" alt="addc21ad-031c-4a17-a5e7-6c0be56acd7d" src="https://github.com/user-attachments/assets/35dbed02-8545-4537-9ff6-dc9a06e534b1" /> | <img width="300" alt="pants_example_fixed" src="https://github.com/user-attachments/assets/e004af2d-d85c-4b4b-a650-1e9bed3633cc" /> |
+| <img width="300" alt="output" src="https://github.com/user-attachments/assets/5e69925c-bb19-4fca-abd6-6247b26bb5f8" /> | <img width="300" alt="output(1)" src="https://github.com/user-attachments/assets/8a62cb7b-a0dc-4729-8eba-e315d8b27540" /> | <img width="300" alt="generalized_pants_nw1_nl2" src="https://github.com/user-attachments/assets/7c445993-2916-402d-b366-f546ef0aba6a" /> |
+| <img width="300" alt="n_pants_with_seams" src="https://github.com/user-attachments/assets/a4336306-d4b8-4fbc-aeee-b79c683a10e5" /> | <img width="300" alt="nwaists_nlegs_pants" src="https://github.com/user-attachments/assets/73237f25-1eae-4e19-aae9-b1d69122dca5" /> | <img width="300" alt="output(3)" src="https://github.com/user-attachments/assets/bed9765d-6aa3-4d79-ac13-d6437e53498a" /> |
+| <img width="300" alt="output(4)" src="https://github.com/user-attachments/assets/87802c0e-5930-48a0-b2e2-64fea7f3a04d" /> | <img width="300" alt="output(5)" src="https://github.com/user-attachments/assets/634498ea-17df-427a-bbcc-b9488f3a59a2" /> | <img width="300" alt="output(6)" src="https://github.com/user-attachments/assets/b46d8a3b-89ae-42fc-be3d-4d13f26372b1" /> |
+| <img width="300" alt="output(7)" src="https://github.com/user-attachments/assets/25db6e56-ced7-4830-bae4-086926235191" /> | <img width="300" alt="output(8)" src="https://github.com/user-attachments/assets/49dfda5b-d200-4203-867b-7887df988b16" /> | <img width="300" alt="output(9)" src="https://github.com/user-attachments/assets/37cc9322-a19c-4dc1-8269-e3e0b780ef24" /> |
+| <img width="300" alt="output(10)" src="https://github.com/user-attachments/assets/8a9a22d4-af20-4f77-af1b-d9146d94eaef" /> | <img width="300" alt="output(11)" src="https://github.com/user-attachments/assets/00566baa-6589-4712-9e5a-d776b1771aa5" /> | <img width="300" alt="output(12)" src="https://github.com/user-attachments/assets/b9ad1b98-0359-415d-9780-8f41d735320f" /> |
 
 ---
 
