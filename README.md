@@ -8,6 +8,16 @@
 <img width="1097" height="1146" alt="generalized_pants_nw1_nl2" src="https://github.com/user-attachments/assets/7c445993-2916-402d-b366-f546ef0aba6a" />
 <img width="1445" height="1468" alt="n_pants_with_seams" src="https://github.com/user-attachments/assets/a4336306-d4b8-4fbc-aeee-b79c683a10e5" />
 <img width="1480" height="1468" alt="nwaists_nlegs_pants" src="https://github.com/user-attachments/assets/73237f25-1eae-4e19-aae9-b1d69122dca5" />
+<img width="1386" height="881" alt="output(3)" src="https://github.com/user-attachments/assets/bed9765d-6aa3-4d79-ac13-d6437e53498a" />
+<img width="1386" height="881" alt="output(4)" src="https://github.com/user-attachments/assets/87802c0e-5930-48a0-b2e2-64fea7f3a04d" />
+<img width="1402" height="881" alt="output(5)" src="https://github.com/user-attachments/assets/634498ea-17df-427a-bbcc-b9488f3a59a2" />
+<img width="1082" height="881" alt="output(6)" src="https://github.com/user-attachments/assets/b46d8a3b-89ae-42fc-be3d-4d13f26372b1" />
+<img width="1564" height="881" alt="output(7)" src="https://github.com/user-attachments/assets/25db6e56-ced7-4830-bae4-086926235191" />
+<img width="968" height="881" alt="output(8)" src="https://github.com/user-attachments/assets/49dfda5b-d200-4203-867b-7887df988b16" />
+<img width="1131" height="881" alt="output(9)" src="https://github.com/user-attachments/assets/37cc9322-a19c-4dc1-8269-e3e0b780ef24" />
+<img width="1237" height="881" alt="output(10)" src="https://github.com/user-attachments/assets/8a9a22d4-af20-4f77-af1b-d9146d94eaef" />
+<img width="1222" height="881" alt="output(11)" src="https://github.com/user-attachments/assets/00566baa-6589-4712-9e5a-d776b1771aa5" /><img width="1105" height="881" alt="output(12)" src="https://github.com/user-attachments/assets/b9ad1b98-0359-415d-9780-8f41d735320f" />
+
 
 ---
 
