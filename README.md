@@ -9,8 +9,11 @@
 | <img width="300" alt="output(4)" src="https://github.com/user-attachments/assets/87802c0e-5930-48a0-b2e2-64fea7f3a04d" /> | <img width="300" alt="output(5)" src="https://github.com/user-attachments/assets/634498ea-17df-427a-bbcc-b9488f3a59a2" /> | <img width="300" alt="output(6)" src="https://github.com/user-attachments/assets/b46d8a3b-89ae-42fc-be3d-4d13f26372b1" /> |
 | <img width="300" alt="output(7)" src="https://github.com/user-attachments/assets/25db6e56-ced7-4830-bae4-086926235191" /> | <img width="300" alt="output(8)" src="https://github.com/user-attachments/assets/49dfda5b-d200-4203-867b-7887df988b16" /> | <img width="300" alt="output(9)" src="https://github.com/user-attachments/assets/37cc9322-a19c-4dc1-8269-e3e0b780ef24" /> |
 | <img width="300" alt="output(10)" src="https://github.com/user-attachments/assets/8a9a22d4-af20-4f77-af1b-d9146d94eaef" /> | <img width="300" alt="output(11)" src="https://github.com/user-attachments/assets/00566baa-6589-4712-9e5a-d776b1771aa5" /> | <img width="300" alt="output(12)" src="https://github.com/user-attachments/assets/b9ad1b98-0359-415d-9780-8f41d735320f" /> |
+| <img width="1000" height="600" alt="Figure_0" src="https://github.com/user-attachments/assets/3fd94cf4-8d8f-4a52-9674-565d5ddcb6ec" /> | <img width="1000" height="1000" alt="Figure_1" src="https://github.com/user-attachments/assets/91f3e4ca-8e80-4956-896f-5b88df644d17" /> | |
+
 
 ---
+
 
 
 <img width="6715" height="10737" alt="NotebookLM Mind Map(3)" src="https://github.com/user-attachments/assets/5ed0fefa-29cc-4747-a918-e9178f579a81" />
