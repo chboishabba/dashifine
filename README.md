@@ -68,6 +68,7 @@
 
 ---
 
+<img width="7601" height="14836" alt="NotebookLM Mind Map(10)" src="https://github.com/user-attachments/assets/5079752e-452a-4208-8a40-b3b5ef4684f2" />
 
 
 <img width="6715" height="10737" alt="NotebookLM Mind Map(3)" src="https://github.com/user-attachments/assets/5ed0fefa-29cc-4747-a918-e9178f579a81" />
