@@ -25,6 +25,29 @@
  |  |
 |  |  |  |
 
+<img width="2560" height="800" alt="cross_moduli_pround" src="https://github.com/user-attachments/assets/be4b6e98-cd97-4407-b3d3-467bc86c31ff" />
+<img width="1600" height="800" alt="heatmap_k_pround" src="https://github.com/user-attachments/assets/4b8a1553-535f-4ad2-94cc-83f40fa3b357" />
+<img width="1600" height="800" alt="heatmap_k_sigma" src="https://github.com/user-attachments/assets/781daced-966d-4671-8e64-bbf86da0ff58" />
+<img width="1440" height="800" alt="overlay_decoherence" src="https://github.com/user-attachments/assets/6052a360-8740-43bd-964e-6cf9c57bfcbb" />
+<img width="2880" height="800" alt="composite_35x9_pround" src="https://github.com/user-attachments/assets/44272318-af0e-413d-af2b-5947eeb19695" />
+<img width="2880" height="800" alt="composite_35x9_sigma" src="https://github.com/user-attachments/assets/9243eec2-2e3e-4275-951d-d2cf085e338c" />
+<img width="2880" height="800" alt="composite_sum_pround" src="https://github.com/user-attachments/assets/1cfd8257-1063-4ac2-8772-5f099335349e" />
+<img width="2560" height="800" alt="cross_moduli_sigma" src="https://github.com/user-attachments/assets/d67d35af-bd05-4767-bd9d-e68f4193c9a1" />
+<img width="640" height="480" alt="Figure_1" src="https://github.com/user-attachments/assets/a9ca8789-e79e-482d-ab6b-2b9980f0dbcf" />
+<img width="640" height="480" alt="Figure_11" src="https://github.com/user-attachments/assets/bac257ff-0781-465b-980a-ffc97c0184dd" />
+<img width="640" height="480" alt="Figure_111" src="https://github.com/user-attachments/assets/d2857ddb-0178-46d4-bee6-e3945c04694e" />
+<img width="640" height="480" alt="Figure_112" src="https://github.com/user-attachments/assets/547b3ce7-1d13-4eb0-a140-383f41d11657" />
+<img width="1000" height="520" alt="Figure_121" src="https://github.com/user-attachments/assets/e80732c1-e649-47df-b21f-c346a26f8dd2" />
+<img width="2560" height="1336" alt="Figure_1111" src="https://github.com/user-attachments/assets/d6a3c554-fd00-448a-b18f-96610895ff16" />
+<img width="2560" height="1336" alt="Figure_1112" src="https://github.com/user-attachments/assets/f4ba9a6d-5f00-450c-96c1-d8e158fedf7a" />
+<img width="896" height="672" alt="H_like_Z1_fft" src="https://github.com/user-attachments/assets/d4c6853e-9eb5-47e3-b36a-0a6e1c7da56a" />
+<img width="896" height="672" alt="H_like_Z1_fft (Copy)" src="https://github.com/user-attachments/assets/a228e4e0-075e-494b-b361-639098139400" />
+<img width="896" height="672" alt="H_like_Z1_spectrum" src="https://github.com/user-attachments/assets/cfe51979-00fa-462e-a4cb-36a28da883ab" />
+<img width="896" height="672" alt="H_like_Z1_spectrum (Copy)" src="https://github.com/user-attachments/assets/42002052-e985-4779-bf43-127a80315803" />
+<img width="1920" height="800" alt="phase_lock_heatmap" src="https://github.com/user-attachments/assets/bb0fe6c5-be6d-43bc-9f7e-e3f686c9a01d" />
+<img width="1920" height="800" alt="phase_lock_sum" src="https://github.com/user-attachments/assets/41ab33fb-fab3-444e-9359-a2501501721a" />
+<img width="1440" height="720" alt="phase_lock_tau" src="https://github.com/user-attachments/assets/f72b005e-be40-4b79-a0c2-141f35b77a82" />
+<img width="1400" height="728" alt="tau_delta_scan_heatmap" src="https://github.com/user-attachments/assets/5a7cdb8c-e53e-4586-a001-2ce27aa44df4" />
 
 
 
