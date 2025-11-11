@@ -6,6 +6,9 @@ import sys
 from pathlib import Path
 
 
+from newtest.runner_lines_fft import FFT_COLUMNS
+
+
 def _read_csv_header(path: Path) -> list[str]:
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.reader(handle)
@@ -57,4 +60,27 @@ def test_fft_runner_creates_csv(tmp_path):
     assert csv_path.exists()
     header = _read_csv_header(csv_path)
     assert header[0:4] == ["Z", "component_index", "frequency_bin", "real"]
+
+
+def test_fft_runner_creates_csv_for_multiple_atomic_numbers(tmp_path):
+    outdir = tmp_path / "spectral"
+    cmd = [
+        sys.executable,
+        "-m",
+        "newtest.runner_lines_fft",
+        "--Zlist",
+        "1,2",
+        "--lmax",
+        "2",
+        "--outdir",
+        str(outdir),
+        "--saveprefix",
+        "lines_fft",
+    ]
+    subprocess.check_call(cmd)
+    for Z in (1, 2):
+        csv_path = outdir / f"lines_fft_Z{Z}.csv"
+        assert csv_path.exists()
+        header = _read_csv_header(csv_path)
+        assert header == FFT_COLUMNS
 
