@@ -6,7 +6,10 @@ from dataclasses import dataclass
 import itertools
 from typing import Dict, Iterator, List
 
-from . import hydrogenic_numerov as hn
+try:
+    from . import hydrogenic_numerov as hn
+except ImportError:
+    import hydrogenic_numerov as hn
 
 # Columns exposed by ``build_dipole_allowed_lines``.  Keeping the header in a
 # single place ensures the CSV writer in the runner always emits the same
