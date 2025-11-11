@@ -7,7 +7,7 @@
 from __future__ import annotations
 import numpy as np
 import numpy.linalg as LA
-from math import pi
+from math import pi, gcd
 
 # -----------------------------
 # Core linear-algebra helpers
@@ -304,6 +304,90 @@ def build_single_leg_open_modulus_quantized_then_gaussian(
     thetas_intra, thetas_inter = make_leg_phases_with_modulus(N, wall, M, width=width)
     thetas_q  = quantize_phases_randomized(thetas_inter, k_quant, p_round=p_round, rng=rng)
     thetas_qg = add_gaussian_phase_noise(thetas_q, sigma=sigma, rng=rng)
+    T = build_T_open(N, t1, t2, thetas_intra, thetas_qg, wall, swap_strengths_at_wall=True)
+    H = build_chiral_H_from_T(T)
+    vals, vecs = eigh_sorted_by_abs(H)
+    return H, vals, vecs
+
+
+def lcm(a: int, b: int) -> int:
+    return abs(a*b) // gcd(a, b) if a and b else 0
+
+def lcm_list(Ms):
+    out = 1
+    for m in Ms:
+        out = lcm(out, int(m))
+    return out
+
+def wrap_angle(theta: np.ndarray) -> np.ndarray:
+    # Wrap to principal value (-pi, pi]
+    return np.angle(np.exp(1j*theta))
+
+def make_leg_phases_with_composite_moduli(
+    N: int,
+    wall: int,
+    Ms: list[int],
+    *,
+    offset: float = 0.0,
+    width: int = 4,
+    mode: str = "lcm",   # "lcm" or "sum"
+    weights: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Build inter-cell phases from a *set* of moduli Ms.
+    - mode="lcm":   effective modulus M_eff = lcm(Ms); theta = 2π * (r mod M_eff) / M_eff
+      -> Gives harmonics at divisors and clean CRT-like composite.
+    - mode="sum":   theta = Σ_i w_i * [2π * (r mod M_i) / M_i], then wrapped to (-π, π]
+      -> Produces visible multi-harmonic 'beats'; default equal weights.
+
+    Returns (thetas_intra, thetas_inter) with shape (N,), (N-1,).
+    """
+    thetas_intra = np.zeros(N, dtype=float)
+    r = intercell_residues_bump_width(N, wall, width=width)  # signed integers
+
+    if mode == "lcm":
+        M_eff = lcm_list(Ms)
+        r_mod = np.mod(r, M_eff)
+        thetas_inter = (2*np.pi * r_mod / float(M_eff)).astype(float) + float(offset)
+    elif mode == "sum":
+        Ms = [int(m) for m in Ms]
+        if weights is None:
+            weights = np.ones(len(Ms), dtype=float) / float(len(Ms))
+        else:
+            weights = np.asarray(weights, dtype=float)
+            weights = weights / np.sum(weights)
+        theta_sum = np.zeros_like(r, dtype=float)
+        for w, Mi in zip(weights, Ms):
+            theta_sum += w * (2*np.pi * np.mod(r, Mi) / float(Mi))
+        thetas_inter = wrap_angle(theta_sum + float(offset))
+    else:
+        raise ValueError("mode must be 'lcm' or 'sum'")
+
+    return thetas_intra, thetas_inter
+
+def build_single_leg_open_composite_quantized_then_gaussian(
+    N: int, t1: float, t2: float, wall: int,
+    Ms: list[int],
+    *, k_quant: int, p_round: float, sigma: float,
+    width: int = 4,
+    mode: str = "lcm",
+    weights: np.ndarray | None = None,
+    rng=None
+):
+    """
+    Composite-moduli pipeline for one leg:
+      phases := composite(Ms, mode)  -> randomized rounding to 2π/k_quant (p_round)
+              -> add Gaussian jitter N(0, sigma^2)
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    thetas_intra, thetas_inter = make_leg_phases_with_composite_moduli(
+        N, wall, Ms, width=width, mode=mode, weights=weights
+    )
+    thetas_q  = quantize_phases_randomized(thetas_inter, k_quant, p_round=p_round, rng=rng)
+    thetas_qg = add_gaussian_phase_noise(thetas_q, sigma=sigma, rng=rng)
+
     T = build_T_open(N, t1, t2, thetas_intra, thetas_qg, wall, swap_strengths_at_wall=True)
     H = build_chiral_H_from_T(T)
     vals, vecs = eigh_sorted_by_abs(H)

@@ -293,3 +293,19 @@ def build_single_leg_open_modulus_quantized_then_gaussian(
         k_quant=k_quant, p_round=p_round, sigma=sigma,
         width=width, rng=rng
     )
+
+
+def build_single_leg_open_composite_quantized_then_gaussian(
+    N: int, t1: float, t2: float, wall: int,
+    Ms: list[int],
+    k_quant: int, p_round: float, sigma: float,
+    width: int = 4,
+    mode: str = "lcm",
+    weights: np.ndarray | None = None,
+    rng=None
+):
+    return TST.build_single_leg_open_composite_quantized_then_gaussian(
+        N=N, t1=t1, t2=t2, wall=wall,
+        Ms=Ms, k_quant=k_quant, p_round=p_round, sigma=sigma,
+        width=width, mode=mode, weights=weights, rng=rng
+    )
