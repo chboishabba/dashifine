@@ -10,25 +10,6 @@ from matplotlib.colors import hsv_to_rgb
 MAX_LINEAGE_DEPTH = 10
 
 
-def _validate_base(base: int) -> int:
-    """Return ``base`` if it is a valid integer radix.
-
-    The helper accepts regular Python integers as well as :class:`numpy`
-    integer scalars while rejecting booleans (which are ``int`` subclasses).
-    A ``ValueError`` is raised when the radix is smaller than two – the
-    minimum meaningful base for positional representations.  Normalising the
-    validation in one place keeps ``lineage_hue_from_address`` and the legacy
-    helper in sync and avoids surprising ``ZeroDivisionError`` exceptions when
-    callers accidentally pass ``base=0`` or ``base=1``.
-    """
-
-    if isinstance(base, bool) or not isinstance(base, (int, np.integer)):
-        raise TypeError("base must be an integer")
-    if base < 2:
-        raise ValueError("base must be >= 2")
-    return int(base)
-
-
 def _legacy_hsv(addr: str, base: int) -> Tuple[float, float, float]:
     """Old address mapping used by the initial tests.
 
@@ -36,7 +17,6 @@ def _legacy_hsv(addr: str, base: int) -> Tuple[float, float, float]:
     portion is interpreted in reverse order to provide a simple hue.
     """
 
-    base = _validate_base(base)
     if "." in addr:
         addr_main, frac_part = addr.split(".", 1)
     else:
@@ -61,8 +41,6 @@ def lineage_hue_from_address(addr: str, base: int = 3) -> Tuple[float, float, fl
     intentionally lightweight and does not attempt to match any formal p-adic
     specification; it simply offers a stable colouring hook.
     """
-
-    base = _validate_base(base)
 
     if "." in addr:
         # Backwards compatible path matching the behaviour expected by the
