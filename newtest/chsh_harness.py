@@ -157,10 +157,8 @@ def two_qubit_from_two_local_planes(uA: np.ndarray, uB: np.ndarray) -> np.ndarra
 
     # Map {|0>_A, |1>_A}⊗{|0>_B, |1>_B} to C^4 canonical basis
     # Construct |Φ+> = (|00> + |11>)/√2 in that local basis
-    bell = np.zeros((4,), dtype=complex)
-    bell[0] = 1/np.sqrt(2)   # |00>
-    bell[3] = 1/np.sqrt(2)   # |11>
-    return bell
+    psi = (np.kron(a0, b0) + np.kron(a1, b1)) / np.sqrt(2)
+    return psi.reshape(4)
 
 # NOTE:
 # - The CHSH evaluator above (Part A) operates entirely in a 2-qubit space.
