@@ -246,19 +246,9 @@ def render_slice(
             hsv[i] = [h, s, v]
         rgb = hsv_to_rgb(hsv)
         if all("addr" in c for c in centers):
-            centre_hsv = [lineage_hue_from_address(c.get("addr", "")) for c in centers]
+            centre_hsv = [lineage_hue_from_address(c["addr"]) for c in centers]
             centre_rgb = hsv_to_rgb(np.array(centre_hsv, dtype=np.float32))
-            top_idx = np.argmax(Wc, axis=1)
-            RGB = centre_rgb[top_idx].reshape(H, W, 3)
-        else:
-            top_idx = np.argmax(Wc, axis=1)
-            depth = np.max(Wc, axis=1)
-            hsv = np.zeros((Wc.shape[0], 3), dtype=np.float32)
-            for i, (idx, d) in enumerate(zip(top_idx, depth)):
-                d_clip = np.clip(d, 0.0, 0.999)
-                addr = f"{int(idx)}.{int(d_clip * 1000):03d}"
-                hsv[i] = lineage_hue_from_address(addr)
-            RGB = hsv_to_rgb(hsv).reshape(H, W, 3)
+            rgb = centre_rgb[top_idx]
     else:
         if C >= 2:
             CM = np.clip(Wc[:, :2], 0, 1)
