@@ -213,20 +213,37 @@ def chsh_on_lattice_frames(
     uA, uA_perp = extract_wall_qubit_frame(vecsA, N_A, wall_A, which_block=which_block_A)
     uB, uB_perp = extract_wall_qubit_frame(vecsB, N_B, wall_B, which_block=which_block_B)
 
-    # Build a 2-qubit state
+    # Build lattice → computational unitaries
+    U_A = np.column_stack((uA, uA_perp))
+    U_B = np.column_stack((uB, uB_perp))
+    U_AB = kron2(U_A, U_B)
+
+    # Build a 2-qubit state in the local qubit frame
     if prep_mode == "ideal_bell":
-        psi = bell_phi_plus()
+        psi_local = bell_phi_plus()
     elif prep_mode == "heisenberg":
-        psi = prepare_two_qubit_state("heisenberg", J=Jprep, tau=tau)
+        psi_local = prepare_two_qubit_state("heisenberg", J=Jprep, tau=tau)
     else:
         raise ValueError("prep_mode must be 'ideal_bell' or 'heisenberg'")
 
-    # Evaluate CHSH in those local planes (angles defined in each local J-plane)
-    S = chsh_S(psi, a, ap, b, bp)
+    # Rotate the state into the physical lattice frame
+    psi_phys = U_AB @ psi_local
+
+    # Evaluate CHSH with the rotated state (equivalent to rotating the ops)
+    S = chsh_S(psi_phys, a, ap, b, bp)
     return dict(
         S=S,
         angles=(a, ap, b, bp),
         valsA=valsA[:6], valsB=valsB[:6],
+        states=dict(
+            psi_local=psi_local,
+            psi_phys=psi_phys,
+        ),
+        unitaries=dict(
+            U_A=U_A,
+            U_B=U_B,
+            U_AB=U_AB,
+        ),
         wall_frames=dict(
             uA=uA, uA_perp=uA_perp,
             uB=uB, uB_perp=uB_perp
