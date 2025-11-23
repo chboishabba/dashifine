@@ -51,8 +51,27 @@ ltFromCompare {zero}    {suc _}   ()
 ltFromCompare {suc _}   {zero}    _  = z<s
 ltFromCompare {suc t}   {suc v}   pf = s<s (ltFromCompare {t} {v} pf)
 
+ltFromBelow : ∀ {t v} → compare t v ≡ below → t < v
+ltFromBelow {zero}    {zero}    ()
+ltFromBelow {zero}    {suc _}   _  = z<s
+ltFromBelow {suc _}   {zero}    ()
+ltFromBelow {suc t}   {suc v}   pf = s<s (ltFromBelow {t} {v} pf)
+
+compare-lt-below : ∀ {t v} → t < v → compare t v ≡ below
+compare-lt-below z<s = refl
+compare-lt-below (s<s lt) = compare-lt-below lt
+
 enforce : (threshold value : Nat) → VoxelGuard threshold value
 enforce threshold value with compare threshold value
 ... | below = ascend z<s
 ... | equal = pivot refl
 ... | above = stay (ltFromCompare {threshold} {value} refl)
+
+enforce-ascended-if : ∀ t v → t < v → state (enforce t v) ≡ ascended
+enforce-ascended-if t v lt rewrite compare-lt-below lt = refl
+
+enforce-ascended-only-if : ∀ t v → state (enforce t v) ≡ ascended → t < v
+enforce-ascended-only-if t v with compare t v
+... | below = λ _ → ltFromBelow {t} {v} refl
+... | equal = λ()
+... | above = λ()
