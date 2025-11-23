@@ -4,6 +4,14 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Nat
 
 ------------------------------------------------------------------------
+-- Utility: repeated rotation
+------------------------------------------------------------------------
+
+spin : {A : Set} → Nat → (A → A) → A → A
+spin 0       rot x = x
+spin (suc n) rot x = rot (spin n rot x)
+
+------------------------------------------------------------------------
 -- Truth values
 ------------------------------------------------------------------------
 
@@ -124,11 +132,3 @@ rotateNonary⁹ non-8 = refl
 
 nonaryXor-identityˡ : ∀ n → nonaryXor non-0 n ≡ n
 nonaryXor-identityˡ _ = refl
-
-------------------------------------------------------------------------
--- Utility: repeated rotation
-------------------------------------------------------------------------
-
-spin : {A : Set} → Nat → (A → A) → A → A
-spin 0       rot x = x
-spin (suc n) rot x = rot (spin n rot x)
