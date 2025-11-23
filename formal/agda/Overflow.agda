@@ -1,15 +1,17 @@
 module Overflow where
 
 open import Agda.Builtin.Equality
-open import Agda.Builtin.Nat
+open import Agda.Builtin.Nat using (Nat ; zero ; suc)
 
 ------------------------------------------------------------------------
--- Basic relations on ℕ
+-- Basic relations on ℕ (custom strict order)
 ------------------------------------------------------------------------
 
-data _<_overflow_ : Nat → Nat → Set where
-  z<s : ∀ {n} → zero <_overflow_ suc n
-  s<s : ∀ {m n} → m <_overflow_ n → suc m <_overflow_ suc n
+infix 4 _≺_
+
+data _≺_ : Nat → Nat → Set where
+  z≺s : ∀ {n} → zero ≺ suc n
+  s≺s : ∀ {m n} → m ≺ n → suc m ≺ suc n
 
 ------------------------------------------------------------------------
 -- Voxel states
@@ -24,9 +26,9 @@ data Voxel : Set where
 
 -- The guard forces an "ascended" voxel whenever a proof of overflow is provided.
 data VoxelGuard : (threshold value : Nat) → Set where
-  stay   : value <_overflow_ threshold      → VoxelGuard threshold value
-  pivot  : threshold ≡ value               → VoxelGuard threshold value
-  ascend : threshold <_overflow_ value      → VoxelGuard threshold value
+  stay   : value ≺ threshold      → VoxelGuard threshold value
+  pivot  : threshold ≡ value      → VoxelGuard threshold value
+  ascend : threshold ≺ value      → VoxelGuard threshold value
 
 state : ∀ {t v} → VoxelGuard t v → Voxel
 state (stay _)   = grounded
@@ -45,32 +47,32 @@ compare zero    (suc _) = below
 compare (suc _) zero    = above
 compare (suc a) (suc b) = compare a b
 
-ltFromCompare : ∀ {t v} → compare t v ≡ above → v <_overflow_ t
+ltFromCompare : ∀ {t v} → compare t v ≡ above → v ≺ t
 ltFromCompare {zero}    {zero}    ()
 ltFromCompare {zero}    {suc _}   ()
-ltFromCompare {suc _}   {zero}    _  = z<s
-ltFromCompare {suc t}   {suc v}   pf = s<s (ltFromCompare {t} {v} pf)
+ltFromCompare {suc _}   {zero}    _  = z≺s
+ltFromCompare {suc t}   {suc v}   pf = s≺s (ltFromCompare {t} {v} pf)
 
-ltFromBelow : ∀ {t v} → compare t v ≡ below → t <_overflow_ v
+ltFromBelow : ∀ {t v} → compare t v ≡ below → t ≺ v
 ltFromBelow {zero}    {zero}    ()
-ltFromBelow {zero}    {suc _}   _  = z<s
+ltFromBelow {zero}    {suc _}   _  = z≺s
 ltFromBelow {suc _}   {zero}    ()
-ltFromBelow {suc t}   {suc v}   pf = s<s (ltFromBelow {t} {v} pf)
+ltFromBelow {suc t}   {suc v}   pf = s≺s (ltFromBelow {t} {v} pf)
 
-compare-lt-below : ∀ {t v} → t <_overflow_ v → compare t v ≡ below
-compare-lt-below z<s = refl
-compare-lt-below (s<s lt) = compare-lt-below lt
+compare-lt-below : ∀ {t v} → t ≺ v → compare t v ≡ below
+compare-lt-below z≺s       = refl
+compare-lt-below (s≺s lt)  = compare-lt-below lt
 
 enforce : (threshold value : Nat) → VoxelGuard threshold value
 enforce threshold value with compare threshold value
-... | below = ascend z<s
+... | below = ascend (ltFromBelow {threshold} {value} refl)
 ... | equal = pivot refl
 ... | above = stay (ltFromCompare {threshold} {value} refl)
 
-enforce-ascended-if : ∀ t v → t <_overflow_ v → state (enforce t v) ≡ ascended
+enforce-ascended-if : ∀ t v → t ≺ v → state (enforce t v) ≡ ascended
 enforce-ascended-if t v lt rewrite compare-lt-below lt = refl
 
-enforce-ascended-only-if : ∀ t v → state (enforce t v) ≡ ascended → t <_overflow_ v
+enforce-ascended-only-if : ∀ t v → state (enforce t v) ≡ ascended → t ≺ v
 enforce-ascended-only-if t v with compare t v
 ... | below = λ _ → ltFromBelow {t} {v} refl
 ... | equal = λ()
