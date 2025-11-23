@@ -1,4 +1,4 @@
-module formal.agda.Overflow where
+module Overflow where
 
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Nat

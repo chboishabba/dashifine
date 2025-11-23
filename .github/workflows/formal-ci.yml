@@ -1,0 +1,37 @@
+name: Formal CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    container:
+      image: leanprovercommunity/lean4:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update dependencies
+        working-directory: formal/lean
+        run: lake update
+
+      - name: Build Lean project
+        working-directory: formal/lean
+        run: lake build
+
+  agda:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Agda
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y agda agda-stdlib
+
+      - name: Compile Agda modules
+        working-directory: formal/agda
+        run: agda Overflow.agda Base369.agda LogicTlurey.agda
