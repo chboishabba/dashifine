@@ -2,6 +2,14 @@
 
 This document summarizes the standalone visualization scripts (`pytest*.py`), the automated tests in `tests/`, and the CHSH/spectral-line tooling under `newtest/`.
 
+## Gap: `Main_with_rotation` versus the documented helpers
+The automation and exploratory scripts below all rely on small numerical utilities but none are wired into the top-level demo in
+`dashifine/Main_with_rotation.py`. That module only emits placeholder slice/coarse PNGs and exposes minimal math helpers
+(`gelu`, `orthonormalize`, `rotate_plane_4d`, palette blending, p-adic colouring). It is the target of the primitive/integration
+tests and acts as a stub for the formal specs, but the visualization/CHSH runners described here do not exercise it directly.
+Documenting this separation clarifies that feature work would need to route future rendering or CLI entry points through
+`Main_with_rotation` to align the library with the example scripts and runners.
+
 ## Root `pytest*.py` visualization and analysis scripts
 - **`pytest1.py`** builds two standing waves on a 2D grid, plots their superposition and the corresponding interference energy surface in 3D. 【F:pytest1.py†L1-L38】
 - **`pytest2.py`** repeats the interference plots and adds a coupled-oscillator learning demo that fits sinusoid amplitudes/phases to a target waveform via stochastic gradient descent with Kuramoto-style coupling, logging trajectories and plotting convergence. 【F:pytest2.py†L1-L189】
