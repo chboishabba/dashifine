@@ -4,6 +4,9 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.List
 open import Agda.Builtin.Nat
 
+cong : ∀ {A B : Set} {x y : A} → (f : A → B) → x ≡ y → f x ≡ f y
+cong f refl = refl
+
 open import Base369
 
 ------------------------------------------------------------------------
