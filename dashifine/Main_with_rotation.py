@@ -9,6 +9,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import hsv_to_rgb
 
+# NOTE: The small helpers in this file are implementation hooks for the formal
+# specifications in ``formal/``.  In particular, the p-adic colouring and
+# branch-selection placeholders are meant to track the guarantees proved in
+# ``FormalCore.PAdic`` and ``FormalCore.Tetralemma``.
+
 
 @dataclass
 class FieldCenters:
@@ -122,6 +127,11 @@ def p_adic_address_to_hue_saturation(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Map p-adic ``addresses`` and ``depth`` to hue and saturation."""
 
+    # Spec note: this indexing structure is intended to satisfy the digitwise
+    # stability properties discussed in ``FormalCore.PAdic.geom_sum_3adic``—we
+    # treat the addresses as convergent p-adic expansions so the hue accumulates
+    # monotonically as more digits are introduced.
+
     addresses = addresses.astype(np.int64)
     depth = depth.astype(np.float32)
     if addresses.size == 0:
@@ -181,6 +191,9 @@ def main(
     plt.imsave(slice_path, img)
 
     coarse = np.zeros((res_coarse, res_coarse), dtype=np.float32)
+    # Spec note: the uniform coarse grid mirrors the balanced prior underpinning
+    # ``FormalCore.Tetralemma.branch_threshold``—each cell contributes equally so
+    # a 0.5 marginal corresponds to a decisive branch in the formal model.
     coarse_path = out_dir / "coarse.png"
     plt.imsave(coarse_path, coarse, cmap="gray")
 

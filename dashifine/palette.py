@@ -1,4 +1,9 @@
-"""Colour palette utilities for Dashifine."""
+"""Colour palette utilities for Dashifine.
+
+Spec linkage: address handling here is meant to mirror the cyclic tri/hex/nonary
+rotations formalised in ``formal/agda/Base369.agda`` while remaining lightweight
+enough for the Python placeholder pipeline.
+"""
 from __future__ import annotations
 
 from typing import Tuple, List
