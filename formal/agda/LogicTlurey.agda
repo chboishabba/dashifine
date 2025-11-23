@@ -1,10 +1,10 @@
-module formal.agda.LogicTlurey where
+module LogicTlurey where
 
 open import Agda.Builtin.Equality
 open import Agda.Builtin.List
 open import Agda.Builtin.Nat
 
-open import formal.agda.Base369
+open import Base369
 
 ------------------------------------------------------------------------
 -- Dialectical stages
