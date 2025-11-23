@@ -21,36 +21,30 @@ data Voxel : Set where
   grounded plateau ascended : Voxel
 
 ------------------------------------------------------------------------
--- Threshold guards (now: classification-only stub)
+-- Threshold guards with embedded proofs
 ------------------------------------------------------------------------
 
--- This now encodes just “which side of the threshold are we on?”
--- without storing an explicit proof. The strict order `_≺_` is still
--- available for future strengthening, but CI only needs this stub.
+-- Each constructor carries the witness required to justify the
+-- classification relative to the threshold.
 data VoxelGuard (threshold value : Nat) : Set where
-  stay   : VoxelGuard threshold value
-  pivot  : VoxelGuard threshold value
-  ascend : VoxelGuard threshold value
+  stay   : value ≺ threshold → VoxelGuard threshold value
+  pivot  : threshold ≡ value → VoxelGuard threshold value
+  ascend : threshold ≺ value → VoxelGuard threshold value
 
 state : ∀ {t v} → VoxelGuard t v → Voxel
-state stay   = grounded
-state pivot  = plateau
-state ascend = ascended
+state (stay _)   = grounded
+state (pivot _)  = plateau
+state (ascend _) = ascended
 
 ------------------------------------------------------------------------
 -- Helper: deterministically choose a guard from a comparison token
 ------------------------------------------------------------------------
 
-data Order : Set where below equal above : Order
-
-compare : Nat → Nat → Order
-compare zero    zero    = equal
-compare zero    (suc _) = below
-compare (suc _) zero    = above
-compare (suc a) (suc b) = compare a b
-
 enforce : (threshold value : Nat) → VoxelGuard threshold value
-enforce threshold value with compare threshold value
-... | below = ascend
-... | equal = pivot
-... | above = stay
+enforce zero      zero      = pivot refl
+enforce zero      (suc v)   = ascend z≺s
+enforce (suc t)   zero      = stay z≺s
+enforce (suc t)   (suc v) with enforce t v
+... | stay p   = stay (s≺s p)
+... | pivot p  = pivot (cong suc p)
+... | ascend p = ascend (s≺s p)
