@@ -37,9 +37,18 @@ state (pivot _)  = plateau
 state (ascend _) = ascended
 
 ------------------------------------------------------------------------
--- Helper: deterministically choose a guard from a comparison token
+-- Helper: deterministically choose a guard by structural comparison
 ------------------------------------------------------------------------
 
+enforce : (threshold value : Nat) → VoxelGuard threshold value
+enforce threshold value with threshold , value
+... | zero , zero = pivot
+... | zero , suc _ = ascend
+... | suc _ , zero = stay
+... | suc threshold , suc value with enforce threshold value
+... | stay   = stay
+... | pivot  = pivot
+... | ascend = ascend
 data Order : Set where below equal above : Order
 
 compare : Nat → Nat → Order
