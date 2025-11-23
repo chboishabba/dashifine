@@ -1,4 +1,4 @@
-name: Formal CI
+name: Formal Proof Checks
 
 on:
   push:
@@ -6,12 +6,16 @@ on:
 
 jobs:
   lean:
+    name: Lean build
     runs-on: ubuntu-latest
     container:
-      image: leanprovercommunity/lean4:latest
+      image: ghcr.io/leanprover-community/lean:4.9.0
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Trust repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Update dependencies
         working-directory: formal/lean
@@ -30,8 +34,10 @@ jobs:
       - name: Install Agda
         run: |
           sudo apt-get update
-          sudo apt-get install -y agda agda-stdlib
+          sudo apt-get install -y agda
 
-      - name: Compile Agda modules
+      - name: Compile Agda files
         working-directory: formal/agda
-        run: agda Overflow.agda Base369.agda LogicTlurey.agda
+        run: |
+          find . -maxdepth 1 -name '*.agda' -print0 \
+            | xargs -0 -n1 agda --no-libraries
