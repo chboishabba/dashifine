@@ -1,0 +1,44 @@
+name: Formal Proof Checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lean:
+    name: Lean build
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/leanprover-community/lean:4.9.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trust repository
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Update dependencies
+        working-directory: formal/lean
+        run: lake update
+
+      - name: Build Lean project
+        working-directory: formal/lean
+        run: lake build
+
+  agda:
+    name: Agda compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Agda
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y agda
+
+      - name: Compile Agda files
+        working-directory: formal/agda
+        run: |
+          find . -maxdepth 1 -name '*.agda' -print0 \
+            | xargs -0 -n1 agda --no-libraries
