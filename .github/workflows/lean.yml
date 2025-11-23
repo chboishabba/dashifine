@@ -1,0 +1,18 @@
+name: Lean CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    container:
+      image: leanprovercommunity/lean4:latest
+    defaults:
+      run:
+        working-directory: formal/lean
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Lean project
+        run: lake build
