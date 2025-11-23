@@ -36,4 +36,24 @@ theorem geom_sum_3adic : (∑' n : ℕ, (3 : ℚ_[3]) ^ n) = (- (1 / 2 : ℚ_[3]
     field_simp [hgeom, sub_eq_add_neg]
   simpa [hgeom, hval] using hsum
 
+/-- The ratio `9 = 3^2` still has norm strictly below one. -/
+lemma norm_nine_padic_lt_one : ‖(9 : ℚ_[3])‖ < 1 := by
+  have hnorm : ‖(9 : ℚ_[3])‖ = ‖(3 : ℚ_[3])‖ ^ 2 := by
+    have hpow : (9 : ℚ_[3]) = (3 : ℚ_[3]) ^ 2 := by norm_num
+    simpa [hpow] using (norm_pow (3 : ℚ_[3]) 2)
+  have hpow : ‖(3 : ℚ_[3])‖ ^ 2 < 1 := by
+    have hnonneg : 0 ≤ ‖(3 : ℚ_[3])‖ := norm_nonneg _
+    have hlt : ‖(3 : ℚ_[3])‖ < 1 := norm_three_padic_lt_one
+    have : 0 < (2 : ℕ) := by decide
+    exact pow_lt_one hnonneg hlt this
+  simpa [hnorm] using hpow
+
+/-- A slightly larger ratio also fits in the p-adic geometric sum toolkit. -/
+theorem geom_sum_3adic_squared : (∑' n : ℕ, (9 : ℚ_[3]) ^ n) = (- (1 / 8 : ℚ_[3])) := by
+  have hsum := tsum_geometric_of_norm_lt_1 (r := (9 : ℚ_[3])) norm_nine_padic_lt_one
+  have hgeom : (1 : ℚ_[3]) - 9 ≠ 0 := by norm_num
+  have hval : (1 : ℚ_[3]) / ((1 : ℚ_[3]) - 9) = - (1 / 8 : ℚ_[3]) := by
+    field_simp [hgeom, sub_eq_add_neg]
+  simpa [hgeom, hval] using hsum
+
 end FormalCore
