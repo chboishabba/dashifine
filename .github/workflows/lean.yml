@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: leanprovercommunity/lean4:latest
+      options: --user 0:0
     defaults:
       run:
         working-directory: formal/lean
