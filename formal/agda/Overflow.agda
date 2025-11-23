@@ -25,7 +25,7 @@ data Voxel : Set where
 ------------------------------------------------------------------------
 
 -- The guard forces an "ascended" voxel whenever a proof of overflow is provided.
-data VoxelGuard : (threshold value : Nat) → Set where
+data VoxelGuard (threshold value : Nat) : Set where
   stay   : value ≺ threshold      → VoxelGuard threshold value
   pivot  : threshold ≡ value      → VoxelGuard threshold value
   ascend : threshold ≺ value      → VoxelGuard threshold value
