@@ -4,9 +4,15 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.List
 open import Agda.Builtin.Nat
 
--- Local symmetry helper so we do not depend on the stdlib.
+------------------------------------------------------------------------
+-- Local equality utilities (no stdlib needed)
+------------------------------------------------------------------------
+
 sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
 sym refl = refl
+
+cong : ∀ {A B : Set} {x y : A} (f : A → B) → x ≡ y → f x ≡ f y
+cong f refl = refl
 
 open import Base369
 
