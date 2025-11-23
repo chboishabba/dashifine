@@ -40,6 +40,26 @@ state (ascend _) = ascended
 -- Helper: deterministically choose a guard from a comparison token
 ------------------------------------------------------------------------
 
+data Order : Set where below equal above : Order
+
+compare : Nat → Nat → Order
+compare zero    zero    = equal
+compare zero    (suc _) = below
+compare (suc _) zero    = above
+compare (suc a) (suc b) = compare a b
+
+compare-eq-below : ∀ {t v} → compare t v ≡ below → t ≺ v
+compare-eq-below {zero}    {zero}    ()
+compare-eq-below {zero}    {suc _}   refl = z≺s
+compare-eq-below {suc _}   {zero}    ()
+compare-eq-below {suc t}   {suc v}   p = s≺s (compare-eq-below {t} {v} p)
+
+compare-eq-above : ∀ {t v} → compare t v ≡ above → v ≺ t
+compare-eq-above {zero}    {zero}    ()
+compare-eq-above {zero}    {suc _}   ()
+compare-eq-above {suc _}   {zero}    refl = z≺s
+compare-eq-above {suc t}   {suc v}   p = s≺s (compare-eq-above {t} {v} p)
+
 enforce : (threshold value : Nat) → VoxelGuard threshold value
 enforce zero      zero      = pivot refl
 enforce zero      (suc v)   = ascend z≺s
