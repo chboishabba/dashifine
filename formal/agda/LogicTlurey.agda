@@ -7,6 +7,9 @@ open import Agda.Builtin.Nat
 cong : ∀ {A B : Set} {x y : A} → (f : A → B) → x ≡ y → f x ≡ f y
 cong f refl = refl
 
+sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
+sym refl = refl
+
 open import Base369
 
 ------------------------------------------------------------------------

@@ -33,9 +33,9 @@ data VoxelGuard (threshold value : Nat) : Set where
   ascend : VoxelGuard threshold value
 
 state : ∀ {t v} → VoxelGuard t v → Voxel
-state (stay   {t} {v}) = grounded
-state (pivot  {t} {v}) = plateau
-state (ascend {t} {v}) = ascended
+state stay   = grounded
+state pivot  = plateau
+state ascend = ascended
 
 ------------------------------------------------------------------------
 -- Helper: deterministically choose a guard from a comparison token
