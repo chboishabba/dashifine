@@ -3,7 +3,10 @@ module LogicTlurey where
 open import Agda.Builtin.Equality
 open import Agda.Builtin.List
 open import Agda.Builtin.Nat
-open import Relation.Binary.PropositionalEquality using (cong; sym)
+
+-- Local symmetry helper so we do not depend on the stdlib.
+sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
+sym refl = refl
 
 open import Base369
 
