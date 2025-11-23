@@ -47,8 +47,8 @@ triXor-assoc tri-mid  tri-low  c = refl
 triXor-assoc tri-mid  tri-mid  c = refl
 triXor-assoc tri-mid  tri-high c rewrite rotateTri³ c = refl
 triXor-assoc tri-high tri-low  c rewrite rotateTri³ c = refl
-triXor-assoc tri-high tri-mid  c = refl
-triXor-assoc tri-high tri-high c = refl
+triXor-assoc tri-high tri-mid  c rewrite rotateTri³ c = refl
+triXor-assoc tri-high tri-high c rewrite rotateTri³ c = refl
 
 ------------------------------------------------------------------------
 
