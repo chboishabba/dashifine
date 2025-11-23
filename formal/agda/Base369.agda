@@ -1,4 +1,4 @@
-module formal.agda.Base369 where
+module Base369 where
 
 open import Agda.Builtin.Equality
 open import Agda.Builtin.Nat
