@@ -3,12 +3,7 @@ module LogicTlurey where
 open import Agda.Builtin.Equality
 open import Agda.Builtin.List
 open import Agda.Builtin.Nat
-
-cong : ∀ {A B : Set} {x y : A} → (f : A → B) → x ≡ y → f x ≡ f y
-cong f refl = refl
-
-sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
-sym refl = refl
+open import Relation.Binary.PropositionalEquality using (cong; sym)
 
 open import Base369
 
@@ -33,7 +28,7 @@ next overflow  = seed
 ------------------------------------------------------------------------
 
 StageTrace : Nat → Stage → List Stage
-StageTrace zero    s = s ∷ []
+StageTrace zero    _ = []
 StageTrace (suc n) s = s ∷ StageTrace n (next s)
 
 length : ∀ {A} → List A → Nat
@@ -44,7 +39,7 @@ _++_ : ∀ {A} → List A → List A → List A
 []       ++ ys = ys
 (x ∷ xs) ++ ys = x ∷ (xs ++ ys)
 
-StageTrace-length : ∀ n s → length (StageTrace n s) ≡ suc n
+StageTrace-length : ∀ n s → length (StageTrace n s) ≡ n
 StageTrace-length zero    _ = refl
 StageTrace-length (suc n) s = cong suc (StageTrace-length n (next s))
 
