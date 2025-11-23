@@ -4,6 +4,13 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Nat using (Nat ; zero ; suc)
 
 ------------------------------------------------------------------------
+-- Local congruence lemma (no stdlib needed)
+------------------------------------------------------------------------
+
+cong : ∀ {A B : Set} {x y : A} (f : A → B) → x ≡ y → f x ≡ f y
+cong f refl = refl
+
+------------------------------------------------------------------------
 -- Basic relations on ℕ (custom strict order)
 ------------------------------------------------------------------------
 
@@ -24,12 +31,6 @@ data Voxel : Set where
 -- Threshold guards with explicit proofs
 ------------------------------------------------------------------------
 
--- Each constructor records the evidence for how a measured `value`
--- relates to the `threshold`, ensuring downstream consumers cannot
--- forget the comparison witness.
--- Threshold guards with embedded proofs
-------------------------------------------------------------------------
-
 -- Each constructor carries the witness required to justify the
 -- classification relative to the threshold.
 data VoxelGuard (threshold value : Nat) : Set where
@@ -45,6 +46,7 @@ state (ascend _) = ascended
 ------------------------------------------------------------------------
 -- Helper: deterministically choose a guard by structural comparison
 ------------------------------------------------------------------------
+
 data Order : Set where below equal above : Order
 
 compare : Nat → Nat → Order
@@ -76,18 +78,22 @@ compare-equal→≡ {suc _} {zero} ()
 compare-equal→≡ {suc t} {suc v} pr = cong suc (compare-equal→≡ {t} {v} pr)
 
 compare-≺→below : ∀ {t v} → t ≺ v → compare t v ≡ below
-compare-≺→below z≺s = refl
-compare-≺→below (s≺s p) = compare-≺→below p
+compare-≺→below z≺s      = refl
+compare-≺→below (s≺s p)  = compare-≺→below p
 
 compare-roundtrip-below : ∀ {t v} (p : t ≺ v) → compare-below→≺ (compare-≺→below p) ≡ p
-compare-roundtrip-below z≺s = refl
-compare-roundtrip-below (s≺s p) = cong s≺s (compare-roundtrip-below p)
+compare-roundtrip-below z≺s      = refl
+compare-roundtrip-below (s≺s p)  = cong s≺s (compare-roundtrip-below p)
+
+------------------------------------------------------------------------
+-- Enforcement by comparison
+------------------------------------------------------------------------
 
 enforce : (threshold value : Nat) → VoxelGuard threshold value
 enforce threshold value with compare threshold value
 ... | below = ascend (compare-below→≺ refl)
 ... | equal = pivot (compare-equal→≡ refl)
-... | above = stay (compare-above→≺ refl)
+... | above = stay  (compare-above→≺ refl)
 
 ------------------------------------------------------------------------
 -- Correctness of enforcement
@@ -102,6 +108,11 @@ only-if {t} {v} with enforce t v
 ... | stay   _ = λ ()
 ... | pivot  _ = λ ()
 ... | ascend p = λ _ → p
+
+------------------------------------------------------------------------
+-- Extra comparison lemmas (if you still want them)
+------------------------------------------------------------------------
+
 compare-eq-below : ∀ {t v} → compare t v ≡ below → t ≺ v
 compare-eq-below {zero}    {zero}    ()
 compare-eq-below {zero}    {suc _}   refl = z≺s
