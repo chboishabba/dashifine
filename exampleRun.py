@@ -1,40 +1,40 @@
-Great question. Short version: your current script is a scaffold for file I/O and plane rotation images, but it doesn’t yet implement the Dashifine math or colour logic we’ve been shaping. Here’s a crisp compare + a drop-in upgrade path.
+# Great question. Short version: your current script is a scaffold for file I/O and plane rotation images, but it doesn’t yet implement the Dashifine math or colour logic we’ve been shaping. Here’s a crisp compare + a drop-in upgrade path.
 
 # What you already have (works)
 
-* CLI + output folders
-* Placeholder images (“origin”, “coarse\_density”, rotated slice files)
-* Minimal 4D vectors and a “rotation” stub
-* Gram–Schmidt helper (unused)
+#* CLI + output folders
+#* Placeholder images (“origin”, “coarse\_density”, rotated slice files)
+#* Minimal 4D vectors and a “rotation” stub
+#* Gram–Schmidt helper (unused)
 
 # What’s missing vs our spec
 
-1. **Field math**
+#1. **Field math**
 
-* No centers $(\mu_i,\sigma_i,w_i,v_{i,c})$, no anisotropic distance $r_i$
-* No GELU density $\rho(\mathbf{p})=\sum w_i\,\text{GELU}(\alpha^{\text{eff}}(1-r_i))$
-* No mass coupling (“fuzziness fades”), no normalization $\tilde\rho$, no $\alpha_{\text{vis}}$
+#* No centers $(\mu_i,\sigma_i,w_i,v_{i,c})$, no anisotropic distance $r_i$
+#* No GELU density $\rho(\mathbf{p})=\sum w_i\,\text{GELU}(\alpha^{\text{eff}}(1-r_i))$
+#* No mass coupling (“fuzziness fades”), no normalization $\tilde\rho$, no $\alpha_{\text{vis}}$
 
-2. **Classing & decisions**
+#2. **Classing & decisions**
+#
+#* No class scores $F=Vg$, no temperatured softmax with margin-dependent $\tau(F)$
 
-* No class scores $F=Vg$, no temperatured softmax with margin-dependent $\tau(F)$
+#3. **Slicing / geometry**
 
-3. **Slicing / geometry**
+#* “Rotate\_plane” doesn’t rotate a 2D plane in 4D; it just mixes a with axis.
+#* No sampling of the slice grid into 4D points; images are all zeros.
 
-* “Rotate\_plane” doesn’t rotate a 2D plane in 4D; it just mixes a with axis.
-* No sampling of the slice grid into 4D points; images are all zeros.
+#4. **Colour**
 
-4. **Colour**
+#* No CM/CMY mapping, no density→alpha, no p-adic/palette, no learned/Eigen option.
 
-* No CM/CMY mapping, no density→alpha, no p-adic/palette, no learned/Eigen option.
+#5. **P-adic / addresses**
 
-5. **P-adic / addresses**
-
-* No address, lineage hue, fractional depth modulation, or rhythm hooks.
+#* No address, lineage hue, fractional depth modulation, or rhythm hooks.
 
 # Minimal code upgrades (surgical)
 
-```python
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -165,68 +165,68 @@ def render_slice(H, W, origin4, a4, b4, centers, V, palette="CMY"):
     A = opacity_from_density(rho).reshape(H, W, 1)
     img = np.clip(RGB, 0, 1)
     return img, A
-```
+
 
 ### How to use it in your `main`
+#
+# * Keep your CLI and file saving.
+# * Replace the rotation with `rotate_plane_4d` (pick a 2D rotation plane `u,v`, e.g., e₀,e₂).
+# * Build a tiny demo scene:
 
-* Keep your CLI and file saving.
-* Replace the rotation with `rotate_plane_4d` (pick a 2D rotation plane `u,v`, e.g., e₀,e₂).
-* Build a tiny demo scene:
 
-```python
 centers = [
   {"mu": np.array([0.0, 0.0, 0.0, 0.0], np.float32), "sigma": np.array([0.6,0.6,0.6,0.6], np.float32), "w": 1.0},
   {"mu": np.array([0.8, 0.0, 0.0, 0.0], np.float32), "sigma": np.array([0.4,0.7,0.6,0.6], np.float32), "w": 0.8},
   {"mu": np.array([0.0, 0.8, 0.0, 0.0], np.float32), "sigma": np.array([0.6,0.4,0.6,0.6], np.float32), "w": 0.9},
 ]
 V = np.eye(3, len(centers), dtype=np.float32)  # 3 classes ← N centers
-```
 
-* Define a 4D slice basis (start with orthonormal axes a,b), and rotate them around plane $(u,v)$ by angle.
-* Call `render_slice`, then compose RGB with alpha onto your preferred background and save.
-
-### Why this matches our spec
-
-* **Anisotropic GELU kernels** (per-center $\sigma$, $w$)
-* **Mass-coupled sharpness** $\alpha_{\text{eff}}(\tilde\rho)$ (“fuzziness fades”)
-* **Class vector** $F=Vg$ and **temperatured softmax** (tie→soft, clear winner→crisp)
-* **Opacity** $\alpha_{\text{vis}}=\tilde\rho^\beta$ (“inverse Swiss-cheese”)
-* **CMY** for ≤3 classes; easy to swap to **learned/p-adic palettes** or Eigen/PCA later
-* **True 4D slice rotation** via rotating the basis in a chosen 2D rotation plane
-
-If you want, I can also sketch the p-adic lineage hue + fractional-depth saturation hook that plugs into `render_slice` as an alternative to CMY.
-Review Summary
-
-The current repository scaffolds CLI handling and placeholder slice outputs but lacks the mathematical and visual logic outlined in the Dashifine spec:
-
-    Field Mathematics – No anisotropic distances, center weights, mass coupling, or density normalization are computed; GELU kernels and visibility alphas are absent.
-
-    Class Scoring – There is no calculation of per-pixel class scores F=Vg and no temperature- or margin-based softmax for decision making.
-
-    4D Geometry – rotate_plane does not rotate a 2D slice in 4D space, and the slice grid is never sampled into 4D coordinates (images remain zero-filled).
-
-    Colour Mapping – Density-to-alpha mapping and CMY colour mixing are missing; slices do not encode class information visually.
-
-    P-adic Addressing – The repository lacks lineage-based hue and fractional-depth saturation (p-adic palette logic).
-
-Issues & Task Stubs
-
-Missing anisotropic density field and mass-coupled sharpness
-Suggested taskImplement Dashifine density kernels
-View task
-
-No per-pixel class scores or temperature-based softmax
-Suggested taskAdd class scoring with temperatured softmax
-View task
-
-Plane rotation and slice sampling not actually 4D
-Suggested taskReplace rotation stub with true 4D slice rotation
-View task
-
-Colour logic absent
-Suggested taskIntroduce CMY colour mixing and density-to-alpha mapping
-View task
-
-No p-adic lineage hue or fractional-depth modulation
-Suggested taskAdd p-adic lineage-based colouring option
-View task
+#
+# * Define a 4D slice basis (start with orthonormal axes a,b), and rotate them around plane $(u,v)$ by angle.
+# * Call `render_slice`, then compose RGB with alpha onto your preferred background and save.
+#
+# ### Why this matches our spec
+#
+# * **Anisotropic GELU kernels** (per-center $\sigma$, $w$)
+# * **Mass-coupled sharpness** $\alpha_{\text{eff}}(\tilde\rho)$ (“fuzziness fades”)
+# * **Class vector** $F=Vg$ and **temperatured softmax** (tie→soft, clear winner→crisp)
+# * **Opacity** $\alpha_{\text{vis}}=\tilde\rho^\beta$ (“inverse Swiss-cheese”)
+# * **CMY** for ≤3 classes; easy to swap to **learned/p-adic palettes** or Eigen/PCA later
+# * **True 4D slice rotation** via rotating the basis in a chosen 2D rotation plane
+#
+# If you want, I can also sketch the p-adic lineage hue + fractional-depth saturation hook that plugs into `render_slice` as an alternative to CMY.
+# Review Summary
+#
+# The current repository scaffolds CLI handling and placeholder slice outputs but lacks the mathematical and visual logic outlined in the Dashifine spec:
+#
+#     Field Mathematics – No anisotropic distances, center weights, mass coupling, or density normalization are computed; GELU kernels and visibility alphas are absent.
+#
+#     Class Scoring – There is no calculation of per-pixel class scores F=Vg and no temperature- or margin-based softmax for decision making.
+#
+#     4D Geometry – rotate_plane does not rotate a 2D slice in 4D space, and the slice grid is never sampled into 4D coordinates (images remain zero-filled).
+#
+#     Colour Mapping – Density-to-alpha mapping and CMY colour mixing are missing; slices do not encode class information visually.
+#
+#     P-adic Addressing – The repository lacks lineage-based hue and fractional-depth saturation (p-adic palette logic).
+#
+# Issues & Task Stubs
+#
+# Missing anisotropic density field and mass-coupled sharpness
+# Suggested taskImplement Dashifine density kernels
+# View task
+#
+# No per-pixel class scores or temperature-based softmax
+# Suggested taskAdd class scoring with temperatured softmax
+# View task
+#
+# Plane rotation and slice sampling not actually 4D
+# Suggested taskReplace rotation stub with true 4D slice rotation
+# View task
+#
+# Colour logic absent
+# Suggested taskIntroduce CMY colour mixing and density-to-alpha mapping
+# View task
+#
+# No p-adic lineage hue or fractional-depth modulation
+# Suggested taskAdd p-adic lineage-based colouring option
+# View task

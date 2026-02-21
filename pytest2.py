@@ -16,8 +16,8 @@ Psi = wave1 + wave2
 # Gradient descent surface = interference energy landscape
 E = (wave1 - wave2)**2
 
-fig = plt.figure(figsize=(10, 6))
-
+fig = plt.figure(figsize=(10, 6))a
+a
 # Plot 1: Interference pattern
 ax1 = fig.add_subplot(1, 2, 1, projection='3d')
 ax1.plot_surface(X, Y, Psi, cmap='viridis', linewidth=0, alpha=0.9)
@@ -49,7 +49,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # 1) Target signal (can be any waveform)
-T = 4.0                    # seconds
+T = 4000.0                    # seconds
 Fs = 800                   # samples per second
 t = np.linspace(0, T, int(T*Fs), endpoint=False)
 
@@ -72,7 +72,7 @@ freqs = np.array([1.0, 2.0, 3.0, 4.0])       # Hz (basis set)
 
 rng = np.random.default_rng(42)
 a = rng.normal(0.0, 0.2, size=N)            # amplitudes
-phi = rng.normal(0.0, 0.5, size=N)           # phases (radians)
+phi = rng.normal(0.0, 0.5, size=N)           # phases (radians)a
 
 # 3) Learning hyperparameters
 lr_a   = 5e-3     # learning rate for amplitudes
@@ -81,7 +81,7 @@ kappa  = 1e-2     # Kuramoto coupling strength between phases (coordination)
 lam_a  = 1e-4     # L2 on amplitudes (regularization)
 lam_p  = 0.0      # L2 on phases (optional)
 
-steps = 1200      # gradient steps
+steps = 12000      # gradient steps
 batch = 800       # samples per step (mini-batch size)
 
 # For logging

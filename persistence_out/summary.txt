@@ -1,0 +1,3 @@
+H0: bars=75  max_persistence=2.4494898319244385
+H1: bars=27  max_persistence=0.5923590660095215
+H2: bars=5  max_persistence=0.288926362991333
