@@ -1,0 +1,6 @@
+label,p,q,z,fejer_frac_Q,max_violation_Q,argmax_iter_Q,use_abs
+pTll_106_170,0,0,4,1.0,0.0,1,False
+pTll_170_350,0,0,4,1.0,0.0,1,False
+pTll_50_76,0,0,4,1.0,0.0,1,False
+pTll_76_106,0,0,4,1.0,0.0,1,False
+phistar_50_76,0,0,4,1.0,0.0,1,False

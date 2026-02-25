@@ -1,0 +1,14 @@
+{
+  "n_traj": 5,
+  "dim": 5,
+  "tail": 5,
+  "global_spectral_radius": 0.9208162273609124,
+  "global_operator_norm": 4847.021938226899,
+  "global_contractive": false,
+  "per_traj_operator_norm_mean": 998051955.6317447,
+  "per_traj_contraction_fraction": 0.0,
+  "global_metric_op_norm_G": 0.9999999998417068,
+  "global_contractive_in_G": true,
+  "per_traj_metric_op_norm_G_mean": 5405260.203013251,
+  "per_traj_contraction_fraction_G": 0.0
+}

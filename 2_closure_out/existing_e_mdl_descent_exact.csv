@@ -1,0 +1,6 @@
+label,last_iter,n_steps,eps,mdl_monotone_all,n_violations,worst_increase,first_violation_iter
+pTll_106_170,12,12,0.0,True,0,-8.016971584012822e-05,-1
+pTll_170_350,12,12,0.0,True,0,-7.007448800600002e-05,-1
+pTll_50_76,12,12,0.0,True,0,-0.00011335366339615405,-1
+pTll_76_106,12,12,0.0,True,0,-0.00017054286686946085,-1
+phistar_50_76,12,12,0.0,False,4,0.07972790403493235,1

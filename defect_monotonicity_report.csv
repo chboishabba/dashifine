@@ -1,0 +1,6 @@
+label,L1_monotone,L1_violations,L1_worst_increase,L1_first_violation_iter,L2_monotone,L2_violations,L2_worst_increase,L2_first_violation_iter,MDL_defect_monotone,MDL_defect_violations,MDL_defect_worst_increase,MDL_defect_first_violation_iter,last_iter
+pTll_106_170,True,0,-6.456871300807418e-14,-1,True,0,-6.416180233415556e-14,-1,True,0,-6.456871300807418e-14,-1,12
+pTll_170_350,True,0,-3.4625559736466504e-14,-1,True,0,-3.4088312046775675e-14,-1,True,0,-3.4625559736466504e-14,-1,12
+pTll_50_76,True,0,-3.948187916191372e-14,-1,True,0,-3.9399157032946304e-14,-1,True,0,-3.948187916191372e-14,-1,12
+pTll_76_106,True,0,-3.4481058813701874e-13,-1,True,0,-3.4333929053106757e-13,-1,True,0,-3.4481058813701874e-13,-1,12
+phistar_50_76,True,0,-1.0961132426294462e-12,-1,True,0,-1.0958469107782709e-12,-1,True,0,-1.0961132426294462e-12,-1,12

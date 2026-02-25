@@ -1,0 +1,105 @@
+{
+  "root": "/home/c/Documents/code/dashifine/hepdata_to_dashi",
+  "hits": [
+    {
+      "file": "pTll_106_170/lenses_continuous.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        12,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "pTll_106_170/lenses_ternary.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        12,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "pTll_170_350/lenses_continuous.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        6,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "pTll_170_350/lenses_ternary.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        6,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "pTll_50_76/lenses_continuous.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        12,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "pTll_50_76/lenses_ternary.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        12,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "pTll_76_106/lenses_continuous.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        33,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "pTll_76_106/lenses_ternary.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        33,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "phistar_50_76/lenses_continuous.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        18,
+        10
+      ],
+      "dtype": "float?"
+    },
+    {
+      "file": "phistar_50_76/lenses_ternary.csv",
+      "kind": "csv",
+      "key": "cols:L0,L1,L2,L3,L4,L5,L6,L7,L8,L9",
+      "shape": [
+        18,
+        10
+      ],
+      "dtype": "float?"
+    }
+  ]
+}

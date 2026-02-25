@@ -1,0 +1,6 @@
+label,dist,n_points,n_y,noise_scale,viol_rate,worst_gap,worst_violation_iter
+pTll_106_170,<lambda>,13,2000,0.5,0.0,0.0,-1
+pTll_170_350,<lambda>,13,2000,0.5,0.0,0.0,-1
+pTll_50_76,<lambda>,13,2000,0.5,0.0,0.0,-1
+pTll_76_106,<lambda>,13,2000,0.5,0.0,0.0,-1
+phistar_50_76,<lambda>,13,2000,0.5,0.0,0.0,-1

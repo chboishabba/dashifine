@@ -1,0 +1,61 @@
+{
+  "best_maskedQ_signatures": [
+    {
+      "fejer_frac_Q": 1.0,
+      "label": "pTll_106_170",
+      "max_violation_Q": 0.0,
+      "p": 0,
+      "q": 0,
+      "z": 5
+    },
+    {
+      "fejer_frac_Q": 1.0,
+      "label": "pTll_170_350",
+      "max_violation_Q": 0.0,
+      "p": 0,
+      "q": 0,
+      "z": 5
+    },
+    {
+      "fejer_frac_Q": 1.0,
+      "label": "pTll_50_76",
+      "max_violation_Q": 0.0,
+      "p": 0,
+      "q": 0,
+      "z": 5
+    },
+    {
+      "fejer_frac_Q": 1.0,
+      "label": "pTll_76_106",
+      "max_violation_Q": 0.0,
+      "p": 0,
+      "q": 0,
+      "z": 5
+    },
+    {
+      "fejer_frac_Q": 1.0,
+      "label": "phistar_50_76",
+      "max_violation_Q": 0.0,
+      "p": 0,
+      "q": 0,
+      "z": 5
+    }
+  ],
+  "beta_dim": 5,
+  "closest_L1_min": 1.0,
+  "defect_L1_all_labels": true,
+  "eps": 1e-12,
+  "fejer_set_L1_min": 1.0,
+  "labels": [
+    "pTll_106_170",
+    "pTll_170_350",
+    "pTll_50_76",
+    "pTll_76_106",
+    "phistar_50_76"
+  ],
+  "mdl_monotone_descent_all_labels": false,
+  "n_transinv": 5000,
+  "n_y": 2000,
+  "seed": 0,
+  "transinv_L1_min": 1.0
+}

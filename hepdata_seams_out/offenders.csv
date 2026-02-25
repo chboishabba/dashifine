@@ -1,0 +1,13 @@
+label,seam,detail
+pTll_106_170,MDLDescent,"{'mdl_monotone_all': 0, 'mdl_monotone_frac': 0.9166666666666666, 'n_violations': 1, 'worst_increase': 1.1115757811985816e-05, 'first_violation_iter': 0, 'last_iter': 12}"
+pTll_106_170,FejerSet_L1,"{'fejer_set_all': 0, 'fejer_set_frac': 0.474609375, 'worst_violation': 0.0033799795067093186, 'worst_y_idx': 377, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"
+pTll_106_170,FejerSet_L2,"{'fejer_set_all': 0, 'fejer_set_frac': 0.0, 'worst_violation': 0.0009721842117205171, 'worst_y_idx': 123, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"
+pTll_170_350,FejerSet_L1,"{'fejer_set_all': 0, 'fejer_set_frac': 0.486328125, 'worst_violation': 0.0003364992960861457, 'worst_y_idx': 227, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"
+pTll_170_350,FejerSet_L2,"{'fejer_set_all': 0, 'fejer_set_frac': 0.0, 'worst_violation': 0.0001060492312277006, 'worst_y_idx': 377, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"
+pTll_50_76,FejerSet_L1,"{'fejer_set_all': 0, 'fejer_set_frac': 0.50390625, 'worst_violation': 0.0026025359993049335, 'worst_y_idx': 123, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"
+pTll_50_76,FejerSet_L2,"{'fejer_set_all': 0, 'fejer_set_frac': 0.0, 'worst_violation': 0.00045692315741607814, 'worst_y_idx': 123, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"
+pTll_76_106,FejerSet_L1,"{'fejer_set_all': 0, 'fejer_set_frac': 0.490234375, 'worst_violation': 0.0024901535999140023, 'worst_y_idx': 377, 'worst_t_idx': 1, 'n_y': 512, 'T_iter': 12}"
+pTll_76_106,FejerSet_L2,"{'fejer_set_all': 0, 'fejer_set_frac': 0.0, 'worst_violation': 0.22560837313163784, 'worst_y_idx': 352, 'worst_t_idx': 7, 'n_y': 512, 'T_iter': 12}"
+phistar_50_76,MDLDescent,"{'mdl_monotone_all': 0, 'mdl_monotone_frac': 0.6666666666666666, 'n_violations': 4, 'worst_increase': 0.03754371292429326, 'first_violation_iter': 0, 'last_iter': 12}"
+phistar_50_76,FejerSet_L1,"{'fejer_set_all': 0, 'fejer_set_frac': 0.0, 'worst_violation': 0.08666186989658442, 'worst_y_idx': 93, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"
+phistar_50_76,FejerSet_L2,"{'fejer_set_all': 0, 'fejer_set_frac': 0.0, 'worst_violation': 0.09557413305628515, 'worst_y_idx': 123, 'worst_t_idx': 0, 'n_y': 512, 'T_iter': 12}"

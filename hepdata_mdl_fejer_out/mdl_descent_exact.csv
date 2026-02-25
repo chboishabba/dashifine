@@ -1,0 +1,6 @@
+label,T_iter,MDL_monotone,MDL_violations,MDL_worst_increase,MDL_worst_iter
+pTll_106_170,12,True,0,-8.016971584012822e-05,3
+pTll_170_350,12,True,0,-7.007448800600002e-05,2
+pTll_50_76,12,True,0,-0.00011335366339615405,3
+pTll_76_106,12,True,0,-0.00017054286686946085,3
+phistar_50_76,12,False,4,0.07972790403493235,1

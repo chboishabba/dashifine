@@ -1,0 +1,6 @@
+label,near0_thresh,b0_all_near0,b0_final_near0,b1_all_near0,b1_final_near0,b2_all_near0,b2_final_near0,b3_all_near0,b3_final_near0,b4_all_near0,b4_final_near0
+pTll_106_170,1e-08,False,False,False,True,False,False,False,True,False,False
+pTll_170_350,1e-08,False,False,False,True,False,False,False,True,False,False
+pTll_50_76,1e-08,False,False,False,True,False,False,False,True,False,False
+pTll_76_106,1e-08,False,False,False,True,False,False,False,True,False,False
+phistar_50_76,1e-08,False,False,False,True,False,False,False,True,False,False
