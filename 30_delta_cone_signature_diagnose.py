@@ -34,6 +34,19 @@ def parse_args():
     ap.add_argument("--min-forward-frac", type=float, default=0.0)
     ap.add_argument("--min-cone-frac", type=float, default=0.0)
     ap.add_argument("--out-rank", default="delta_cone_signature_rank.csv")
+    # optional axis/weight handling
+    ap.add_argument("--auto-null-axis", action="store_true",
+                    help="Drop x-cols whose delta-std is near-zero (treat as null axis).")
+    ap.add_argument("--null-std-abs", type=float, default=1e-9,
+                    help="Absolute std threshold for null-axis detection (on deltas).")
+    ap.add_argument("--null-std-rel", type=float, default=1e-3,
+                    help="Relative std threshold vs median delta-std for null-axis detection.")
+    ap.add_argument("--diag-weights", default="",
+                    help="Optional comma-separated diagonal weights (len = #x-cols).")
+    ap.add_argument("--fit-posneg-scale", action="store_true",
+                    help="Fit a single scale on +1 axes vs -1 axes to reduce violations.")
+    ap.add_argument("--posneg-cap", type=float, default=1.0,
+                    help="Upper cap on fitted pos-scale (default 1.0 = only shrink + axes).")
     # diagnostics
     ap.add_argument("--mask", default="", help="Mask like '1,-1,-1'. If omitted, uses best under constraints.")
     ap.add_argument("--dump-violations", action="store_true", help="Write a CSV of forward-step cone violations for chosen/best mask.")
@@ -89,12 +102,34 @@ def q_of_dx(dx: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return (dx * dx) @ mask
 
 
+def q_of_dx_weighted(dx: np.ndarray, mask: np.ndarray, weights: Optional[np.ndarray]) -> np.ndarray:
+    if weights is None:
+        return q_of_dx(dx, mask)
+    return (dx * dx) @ (mask * weights)
+
+
+def compute_delta_stds(df: pd.DataFrame, label_col: str, step_col: str, x_cols: List[str]) -> Dict[str, float]:
+    deltas = []
+    for _, g in df.groupby(label_col, sort=False):
+        g = g.sort_values(step_col)
+        X = g[x_cols].to_numpy(dtype=float)
+        if len(X) < 2:
+            continue
+        deltas.append(X[1:] - X[:-1])
+    if not deltas:
+        return {c: 0.0 for c in x_cols}
+    dX = np.vstack(deltas)
+    stds = np.std(dX, axis=0)
+    return {c: float(s) for c, s in zip(x_cols, stds)}
+
+
 @dataclass
 class Score:
     p: int
     q: int
     z: int
     mask: str
+    pos_scale: float
     forward_frac_min: float
     forward_frac_mean: float
     cone_forward_frac_min: float
@@ -105,7 +140,51 @@ class Score:
 
 def score_mask(df: pd.DataFrame, label_col: str, step_col: str, x_cols: List[str], arrow_col: str,
               mask_vec: np.ndarray, eps_cone: float, eps_arrow: float,
+              weights: Optional[np.ndarray], fit_posneg_scale: bool, posneg_cap: float,
               min_forward_frac: float, min_cone_frac: float) -> Score:
+    pos_scale = 1.0
+    if fit_posneg_scale:
+        pos_idx = mask_vec == 1
+        neg_idx = mask_vec == -1
+        max_scales = []
+        for _, g in df.groupby(label_col, sort=False):
+            g = g.sort_values(step_col)
+            X = g[x_cols].to_numpy(dtype=float)
+            A = g[arrow_col].to_numpy(dtype=float)
+            if len(X) < 2:
+                continue
+            dX = X[1:] - X[:-1]
+            dA = A[1:] - A[:-1]
+            forward = dA >= -eps_arrow
+            if not np.any(forward):
+                continue
+            dXf = dX[forward]
+            if weights is not None:
+                w = weights
+                pos_sum = np.sum((dXf[:, pos_idx] ** 2) * w[pos_idx], axis=1) if np.any(pos_idx) else None
+                neg_sum = np.sum((dXf[:, neg_idx] ** 2) * w[neg_idx], axis=1) if np.any(neg_idx) else None
+            else:
+                pos_sum = np.sum(dXf[:, pos_idx] ** 2, axis=1) if np.any(pos_idx) else None
+                neg_sum = np.sum(dXf[:, neg_idx] ** 2, axis=1) if np.any(neg_idx) else None
+            if pos_sum is None or neg_sum is None:
+                continue
+            valid = pos_sum > 0
+            if not np.any(valid):
+                continue
+            ratios = (neg_sum[valid] + eps_cone) / pos_sum[valid]
+            scales = np.sqrt(np.clip(ratios, a_min=0.0, a_max=None))
+            if len(scales):
+                max_scales.append(float(np.min(scales)))
+        if len(max_scales):
+            pos_scale = min(float(np.min(max_scales)), float(posneg_cap))
+
+    eff_weights = weights
+    if pos_scale != 1.0:
+        w = np.ones(len(mask_vec), dtype=float) if weights is None else np.array(weights, dtype=float)
+        w = w * 1.0
+        w[mask_vec == 1] *= pos_scale ** 2
+        eff_weights = w
+
     # compute per-label stats
     per_label_forward = []
     per_label_cone_forward = []
@@ -125,7 +204,7 @@ def score_mask(df: pd.DataFrame, label_col: str, step_col: str, x_cols: List[str
         forward = dA >= -eps_arrow
         forward_frac = float(np.mean(forward)) if len(forward) else 0.0
 
-        qd = q_of_dx(dX, mask_vec)
+        qd = q_of_dx_weighted(dX, mask_vec, eff_weights)
         cone_ok = qd <= eps_cone
 
         if np.any(forward):
@@ -144,6 +223,7 @@ def score_mask(df: pd.DataFrame, label_col: str, step_col: str, x_cols: List[str
         return Score(
             p=int(np.sum(mask_vec==1)), q=int(np.sum(mask_vec==-1)), z=int(np.sum(mask_vec==0)),
             mask=",".join(str(int(x)) for x in mask_vec),
+            pos_scale=pos_scale,
             forward_frac_min=0.0, forward_frac_mean=0.0,
             cone_forward_frac_min=0.0, cone_forward_frac_mean=0.0,
             max_Qd_violation_max=float("inf"),
@@ -161,6 +241,7 @@ def score_mask(df: pd.DataFrame, label_col: str, step_col: str, x_cols: List[str
     return Score(
         p=int(np.sum(mask_vec==1)), q=int(np.sum(mask_vec==-1)), z=int(np.sum(mask_vec==0)),
         mask=",".join(str(int(x)) for x in mask_vec),
+        pos_scale=pos_scale,
         forward_frac_min=fmin, forward_frac_mean=fmean,
         cone_forward_frac_min=cmin, cone_forward_frac_mean=cmean,
         max_Qd_violation_max=vmax if math.isfinite(vmax) else vmax,
@@ -170,7 +251,15 @@ def score_mask(df: pd.DataFrame, label_col: str, step_col: str, x_cols: List[str
 
 def dump_violations(df: pd.DataFrame, label_col: str, step_col: str, x_cols: List[str], arrow_col: str,
                     mask_vec: np.ndarray, eps_cone: float, eps_arrow: float,
+                    weights: Optional[np.ndarray], pos_scale: float,
                     out_csv: str, top_k: int):
+    eff_weights = weights
+    if pos_scale != 1.0:
+        w = np.ones(len(mask_vec), dtype=float) if weights is None else np.array(weights, dtype=float)
+        w = w * 1.0
+        w[mask_vec == 1] *= pos_scale ** 2
+        eff_weights = w
+
     rows = []
     for lab, g in df.groupby(label_col, sort=False):
         g = g.sort_values(step_col)
@@ -185,7 +274,7 @@ def dump_violations(df: pd.DataFrame, label_col: str, step_col: str, x_cols: Lis
         dA = A[1:] - A[:-1]
         forward = dA >= -eps_arrow
 
-        qd = q_of_dx(dX, mask_vec)
+        qd = q_of_dx_weighted(dX, mask_vec, eff_weights)
         viol = forward & (qd > eps_cone)
 
         idxs = np.where(viol)[0]
@@ -227,9 +316,37 @@ def main():
     if len(x_cols) == 0:
         raise SystemExit("[err] no x cols selected")
     d = len(x_cols)
+    orig_x_cols = list(x_cols)
+
+    weights = None
+    if args.diag_weights.strip():
+        weights = np.array([float(x) for x in args.diag_weights.split(",")], dtype=float)
+        if len(weights) != d:
+            raise SystemExit(f"[err] diag-weights len={len(weights)} != #x-cols={d}")
+
+    if args.auto_null_axis:
+        stds = compute_delta_stds(df, args.label_col, args.step_col, x_cols)
+        std_vals = np.array([stds[c] for c in x_cols], dtype=float)
+        median_std = float(np.median(std_vals)) if len(std_vals) else 0.0
+        thresh = max(args.null_std_abs, args.null_std_rel * median_std)
+        keep_cols = [c for c in x_cols if stds[c] > thresh]
+        dropped = [c for c in x_cols if c not in keep_cols]
+        if dropped:
+            print(f"[warn] dropping near-null axes (delta-std <= {thresh:g}): {dropped}")
+            x_cols = keep_cols
+            d = len(x_cols)
+            if weights is not None:
+                keep_idx = [i for i, c in enumerate(orig_x_cols) if c in x_cols]
+                weights = np.array([weights[i] for i in keep_idx], dtype=float)
+        if d == 0:
+            raise SystemExit("[err] all x cols dropped as null; relax thresholds or disable auto-null-axis")
 
     print(f"[info] x cols used: {x_cols}")
     print(f"[info] arrow col: {args.arrow_col}")
+    if weights is not None:
+        print(f"[info] diag weights: {weights.tolist()}")
+    if args.fit_posneg_scale:
+        print(f"[info] fitting pos/neg scale with cap={args.posneg_cap}")
 
     masks = all_masks(d, allow_zero=args.allow_zero)
 
@@ -244,6 +361,7 @@ def main():
         sc = score_mask(
             df, args.label_col, args.step_col, x_cols, args.arrow_col,
             mvec, args.eps, args.eps_arrow,
+            weights, args.fit_posneg_scale, args.posneg_cap,
             args.min_forward_frac, args.min_cone_frac
         )
         scores.append(sc)
@@ -276,9 +394,11 @@ def main():
         if args.dump_violations:
             mask_str = chosen.iloc[0]["mask"]
             mask_vec = np.array([float(x) for x in mask_str.split(",")], dtype=float)
+            pos_scale = float(chosen.iloc[0].get("pos_scale", 1.0))
             dump_violations(
                 df, args.label_col, args.step_col, x_cols, args.arrow_col,
                 mask_vec, args.eps, args.eps_arrow,
+                weights, pos_scale,
                 args.violations_csv, args.top_k
             )
             print(f"[ok] wrote: {args.violations_csv} (top {args.top_k} forward-step cone violations)")

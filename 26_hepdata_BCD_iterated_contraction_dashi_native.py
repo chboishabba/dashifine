@@ -2,18 +2,26 @@ import os, math, csv
 import numpy as np
 import requests
 import matplotlib.pyplot as plt
+from typing import Optional, Any, Dict, List
 
 # ===============================
 # DATASETS (same 5)
 # ===============================
-TABLES = [
-    (129890, 129891, "pTll_50_76"),
-    (129892, 129893, "pTll_76_106"),
-    (129894, 129895, "pTll_106_170"),
-    (129896, 129897, "pTll_170_350"),
-    (129902, 129903, "phistar_50_76"),
+TABLES: List[Dict[str, Any]] = [
+    {"label": "z_pt_7tev_atlas", "table_url": "https://www.hepdata.net/download/table/ins1300647/Table 1/json"},
+    {"label": "ttbar_mtt_8tev_cms",
+     "table_url": "https://www.hepdata.net/download/table/ins1370682/Table 39/json",
+     "cov_url": "https://www.hepdata.net/download/table/ins1370682/Table 40/json"},
+    {"label": "hgg_pt_8tev_atlas", "table_url": "https://www.hepdata.net/download/table/ins1391147/Table 2/json"},
+    {"label": "dijet_chi_7tev_cms", "table_url": "https://www.hepdata.net/download/table/ins889175/Table 1/json"},
+    {"label": "dijet_chi_13tev_cms_mgt6",
+     "record": "ins1663452", "table": "Table 1"},
+    {"label": "atlas_4l_m4l_8tev",
+     "record": "ins1394865", "table": "Table 1", "cov_table": "Table 4"},
+    {"label": "atlas_4l_pt4l_8tev",
+     "record": "ins1394865", "table": "Table 2", "cov_table": "Table 5"},
+    {"label": "ptll_76_106_table", "table_url": "https://www.hepdata.net/record/129883?format=json"},
 ]
-BASE_URL = "https://www.hepdata.net/record/{}?format=json"
 
 OUTDIR = "hepdata_dashi_native"
 os.makedirs(OUTDIR, exist_ok=True)
@@ -45,17 +53,50 @@ EPS_DIR = 1e-4
 # ===============================
 # HEPData download / parse
 # ===============================
-def get_json(record_id: int) -> dict:
-    r = requests.get(BASE_URL.format(record_id), timeout=60)
+def get_json(ref: str) -> dict:
+    url = ref if ref.startswith("http") else f"https://www.hepdata.net/record/{ref}?format=json"
+    r = requests.get(url, timeout=60)
     r.raise_for_status()
     return r.json()
 
+
+def _resolve_table_url(record_id: str, table_name: str) -> str:
+    rec = get_json(record_id)
+    for t in rec.get("data_tables", []):
+        name = t.get("name") or t.get("table_name") or ""
+        if name.strip() == table_name.strip():
+            url = t.get("data", {}).get("json")
+            if not url:
+                raise ValueError(f"Table {table_name} has no JSON url in record {record_id}")
+            return url
+    raise ValueError(f"Table '{table_name}' not found in record {record_id}")
+
+
+def _resolve_ref(entry: Dict[str, Any], key: str, table_key: str) -> Optional[str]:
+    if key in entry and entry[key]:
+        return entry[key]
+    if entry.get("record") and entry.get(table_key):
+        return _resolve_table_url(entry["record"], entry[table_key])
+    return None
+
 def extract_xy(table_json: dict):
     xbins, xmid, y = [], [], []
+    def parse_num(v):
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            s = v.strip()
+            s = s.replace(">", "").replace("<", "").strip()
+            return float(s)
+        return float(v)
     for row in table_json["values"]:
         xb = row["x"][0]
-        low = float(xb["low"]); high = float(xb["high"])
-        mid = 0.5*(low+high)
+        if "low" in xb and "high" in xb:
+            low = parse_num(xb["low"]); high = parse_num(xb["high"])
+            mid = 0.5*(low+high)
+        else:
+            val = parse_num(xb.get("value"))
+            low = val; high = val; mid = val
         if mid <= 0:
             mid = 0.5*high
         xbins.append((low, high))
@@ -63,23 +104,71 @@ def extract_xy(table_json: dict):
         y.append(float(row["y"][0]["value"]))
     return xbins, np.array(xmid, float), np.array(y, float)
 
-def extract_cov_total(cov_json: dict, xbins):
+def _parse_error_val(val, yval: float) -> float:
+    if isinstance(val, str) and val.strip().endswith("%"):
+        pct = float(val.strip().replace("%", ""))
+        return abs(yval) * pct / 100.0
+    return abs(float(val))
+
+
+def extract_yerr(table_json: dict):
+    yerr = []
+    for row in table_json["values"]:
+        yval = float(row["y"][0]["value"])
+        errs = row["y"][0].get("errors", [])
+        if not errs:
+            yerr.append(float("nan"))
+            continue
+        parts = []
+        for e in errs:
+            if "symerror" in e:
+                parts.append(_parse_error_val(e["symerror"], yval))
+            elif "asymerror" in e:
+                ae = e["asymerror"]
+                plus = _parse_error_val(ae.get("plus", 0.0), yval)
+                minus = _parse_error_val(ae.get("minus", 0.0), yval)
+                parts.append(max(plus, minus))
+        if parts:
+            yerr.append(float(np.sqrt(np.sum(np.square(parts)))))
+        else:
+            yerr.append(float("nan"))
+    arr = np.array(yerr, float)
+    return arr if np.isfinite(arr).any() else None
+
+
+def extract_cov_matrix(cov_json: dict, xbins):
     headers = [h["name"] for h in cov_json["headers"]]
-    total_idx = None
+    cov_idx = None
     for i, name in enumerate(headers):
-        if "Total uncertainty" in name:
-            total_idx = i
+        n = name.lower()
+        if "covariance" in n or "cov(" in n or "matrix element" in n:
+            cov_idx = i
             break
-    if total_idx is None:
-        raise ValueError("Total uncertainty column not found")
-    y_col = total_idx - 2
+    if cov_idx is None:
+        total_idx = None
+        for i, name in enumerate(headers):
+            if "Total uncertainty" in name:
+                total_idx = i
+                break
+        if total_idx is None:
+            raise ValueError("Covariance/Total uncertainty column not found")
+        y_col = total_idx - 2
+    else:
+        y_col = cov_idx - 2
 
     n = len(xbins)
     V = np.zeros((n, n), float)
+    def parse_num(v):
+        if isinstance(v, (int, float)):
+            return float(v)
+        if isinstance(v, str):
+            s = v.strip().replace(">", "").replace("<", "").strip()
+            return float(s)
+        return float(v)
 
     for row in cov_json["values"]:
-        bi = (float(row["x"][0]["low"]), float(row["x"][0]["high"]))
-        bj = (float(row["x"][1]["low"]), float(row["x"][1]["high"]))
+        bi = (parse_num(row["x"][0]["low"]), parse_num(row["x"][0]["high"]))
+        bj = (parse_num(row["x"][1]["low"]), parse_num(row["x"][1]["high"]))
         i = xbins.index(bi)
         j = xbins.index(bj)
         cov_ij = float(row["y"][y_col]["value"])
@@ -90,6 +179,9 @@ def extract_cov_total(cov_json: dict, xbins):
 def cov_to_logspace(Vy: np.ndarray, y: np.ndarray):
     # Cov(log y_i, log y_j) ≈ Cov(y_i,y_j)/(y_i y_j)
     return Vy / np.outer(y, y)
+
+def safe_log(x, eps=1e-12):
+    return np.log(np.maximum(x, eps))
 
 # ===============================
 # Representation basis: Legendre invariants on x∈[-1,1]
@@ -111,7 +203,8 @@ def design_legendre(x_unit, degree: int):
 # ===============================
 def regularize_cov(V):
     n = V.shape[0]
-    ridge = RIDGE_COV * (np.trace(V) / max(n,1))
+    base = np.trace(V) / max(n, 1)
+    ridge = max(RIDGE_COV * base, 1e-12)
     return V + ridge*np.eye(n)
 
 def penalized_gls_fit(X, z, V, alpha, w_diag):
@@ -126,7 +219,10 @@ def penalized_gls_fit(X, z, V, alpha, w_diag):
       - 𝑅 renorm: re-fit effective low-order coefficients each step
     """
     Vreg = regularize_cov(V)
-    Vinv = np.linalg.inv(Vreg)
+    try:
+        Vinv = np.linalg.inv(Vreg)
+    except np.linalg.LinAlgError:
+        Vinv = np.linalg.pinv(Vreg)
 
     XtV = X.T @ Vinv
     A = XtV @ X + alpha * np.diag(w_diag)
@@ -224,17 +320,28 @@ def dashi_weights():
 # ===============================
 # Analysis runner
 # ===============================
-def analyze_dataset(table_id, cov_id, label):
+def analyze_dataset(entry: Dict[str, Any]):
+    table_id = _resolve_ref(entry, "table_url", "table")
+    cov_id = _resolve_ref(entry, "cov_url", "cov_table")
+    label = entry["label"]
     print(f"\n=== {label} ===")
     t = get_json(table_id)
-    c = get_json(cov_id)
+    c = get_json(cov_id) if cov_id else None
 
     xbins, x, y = extract_xy(t)
-    Vy = extract_cov_total(c, xbins)
+    Vy = None
+    if c is not None:
+        Vy = extract_cov_matrix(c, xbins)
+    else:
+        yerr = extract_yerr(t)
+        if yerr is not None:
+            Vy = np.diag(yerr ** 2)
+    if Vy is None:
+        Vy = np.eye(len(x))
 
     # Work in logx/logy as you did
-    lx = np.log(x)
-    z  = np.log(y)
+    lx = safe_log(x)
+    z  = safe_log(y)
     Vz = cov_to_logspace(Vy, y)
 
     x_unit = scale_to_unit(lx)
@@ -340,8 +447,8 @@ def analyze_dataset(table_id, cov_id, label):
 
 def main():
     print(f"Output dir: {OUTDIR}")
-    for table_id, cov_id, label in TABLES:
-        analyze_dataset(table_id, cov_id, label)
+    for entry in TABLES:
+        analyze_dataset(entry)
     print("Done.")
 
 if __name__ == "__main__":

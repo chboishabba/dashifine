@@ -1,0 +1,30 @@
+{
+  "root": "/home/c/Documents/code/dashifine/hepdata_dashi_native",
+  "n_rows": 117,
+  "labels": [
+    "dijet_chi_7tev_cms",
+    "hgg_pt_8tev_atlas",
+    "pTll_106_170",
+    "pTll_170_350",
+    "pTll_50_76",
+    "pTll_76_106",
+    "phistar_50_76",
+    "ttbar_mtt_8tev_cms",
+    "z_pt_7tev_atlas"
+  ],
+  "energies": [
+    "E_beta_L2",
+    "E_beta_L1",
+    "E_tail",
+    "E_MDL_proxy",
+    "E_beta_minus_logchi2"
+  ],
+  "mean_monotone_fraction_by_energy": {
+    "E_beta_L2": 0.7962962962962963,
+    "E_beta_L1": 0.9351851851851851,
+    "E_tail": 0.75,
+    "E_MDL_proxy": 0.9351851851851851,
+    "E_beta_minus_logchi2": 0.9436026936026936
+  },
+  "note": "If chi2/dof increases while a DASHI energy decreases, that is consistent with 'covariance-fit is not gauge-invariant under DASHI projection'. Use E_dist_to_fp / E_MDL_proxy / E_beta_L1 as primary Lyapunov candidates."
+}

@@ -1,0 +1,10 @@
+MDL_monotone,MDL_violations,MDL_worst_increase,MDL_worst_iter,label,T_iter
+True,0,-3.888114546768406e-06,2,dijet_chi_7tev_cms,12
+True,0,-0.00016094147402334613,1,hgg_pt_8tev_atlas,12
+True,0,-8.016971584012822e-05,3,pTll_106_170,12
+True,0,-7.007448800600002e-05,2,pTll_170_350,12
+True,0,-0.00011335366339615405,3,pTll_50_76,12
+True,0,-0.00017054286686946085,3,pTll_76_106,12
+False,4,0.07972790403493235,1,phistar_50_76,12
+False,2,0.6945773591210367,11,ttbar_mtt_8tev_cms,12
+False,1,0.030555144299985848,10,z_pt_7tev_atlas,12

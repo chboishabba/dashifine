@@ -1,0 +1,10 @@
+label,p,q,z,fejer_frac_Q,max_violation_Q,argmax_iter_Q,use_abs
+dijet_chi_7tev_cms,2,0,2,1.0,-1.9778437670829482e-06,12,False
+hgg_pt_8tev_atlas,2,0,2,1.0,-4.381512087329117e-08,12,False
+pTll_106_170,0,0,4,1.0,0.0,1,False
+pTll_170_350,0,0,4,1.0,0.0,1,False
+pTll_50_76,0,0,4,1.0,0.0,1,False
+pTll_76_106,0,0,4,1.0,0.0,1,False
+phistar_50_76,0,0,4,1.0,0.0,1,False
+ttbar_mtt_8tev_cms,0,0,4,1.0,0.0,1,False
+z_pt_7tev_atlas,0,0,4,1.0,0.0,1,False
