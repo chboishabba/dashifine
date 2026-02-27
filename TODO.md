@@ -29,11 +29,15 @@
     - Perfect closure for pos_scale ∈ [0.10, 0.20].
     - Hard break at pos_scale ≈ 0.25 with cone_frac_min dropping to 0.5833.
     - Monotone increase in max_Q with pos_scale up to ~5.6 at pos_scale=1.0.
+    - Sweep output: `pos_scale_sweep.csv`, plot `pos_scale_sweep.png`.
 
   - Whitening / normalization diagnostics:
     - v_dnorm is near-null in MAD but not in std (spiky axis); MAD normalization destabilizes.
     - 2D tests (dropping v_dnorm) show unweighted cone weak; weighted requires small pos_scale.
     - Global whitening did not move critical scale toward 1.0; closure degraded.
+    - Full-whitening sweep (frozen mask `-1,1,-1`):
+      - cone_frac_min stays 0.5833 for pos_scale >= 0.15; max_Q grows to ~100 at pos_scale=1.0.
+      - At pos_scale=0.25, failing labels include: `ptll_76_106_table`, `phistar_50_76`, `z_pt_7tev_atlas`, `ttbar_mtt_8tev_cms` (others remain perfect).
 
 - HEPData sources (table set change in scripts):
   - removed (previous set)
@@ -48,12 +52,57 @@
   - + ttbar m_tt covariance (CMS 8 TeV): https://www.hepdata.net/download/table/ins1370682/Table 40/json
   - + H->gamma gamma pT (ATLAS 8 TeV): https://www.hepdata.net/download/table/ins1391147/Table 2/json
   - + Dijet angular chi (CMS 7 TeV): https://www.hepdata.net/download/table/ins889175/Table 1/json
+  - + Dijet angular chi (CMS 13 TeV, mjj>6 TeV): record `ins1663452`, table `Table 1`
+  - + ATLAS 4l m4l (8 TeV): record `ins1394865`, table `Table 1`, covariance `Table 4`
+  - + ATLAS 4l pT4l (8 TeV): record `ins1394865`, table `Table 2`, covariance `Table 5`
+  - + pTll 76–106 (central values): https://www.hepdata.net/record/129883?format=json
 - HEPData URL patterns:
   - record JSON: https://www.hepdata.net/record/<record_id>?format=json
   - data JSON (example): https://www.hepdata.net/record/data/82308/322783/1/
-  - note: the JSON button on record pages uses `?format=json` and may redirect to a `record/data/...` JSON endpoint.
+  - note: the JSON button on record pages uses `?format=json` and may redirect to a `record/data/...` JSON endpoint (e.g., https://www.hepdata.net/record/85575?format=json -> https://www.hepdata.net/record/data/82308/322783/1/).
 
 - Decide whether to filter single-step jump events (e.g., percentile threshold on ||Δx||) before cone screening.
 - Evaluate a weighted diagonal Lorentz form (fit scale weights) to test if the single violation is a coordinate-scaling artifact.
 - Add an option to auto-detect near-null Δ-axes (variance threshold) and drop them from the signature scan.
 - Add a short note in the cone-screen CLI help explaining the expected step column (`step` vs `iter`).
+
+- Robustness reporting (2026-02-26):
+  - Added `33_scale_robustness.py` to report pos_scale interval lengths where cone_frac_min >= threshold.
+  - Enforces indefinite masks by default (`--allow-definite` overrides).
+  - Supports perturbation variants (noise, resample, eps/eps_arrow, jump-filter) and arrow-col/transform sweeps.
+  - Added forward-selection modes: `order` (all steps forward) and `arrow_rank_freeze` (forward by rank, frozen under arrow transforms).
+  - Added two-sided modes: `complement` (backward steps satisfy `Q >= -eps`), `reverse_edges` (use -Δx on same edges), and `bidirectional` (backward steps satisfy `Q <= eps`).
+  - Added MDL-based forward selection (`--forward-mode mdl`) using `E_MDL_proxy` from per_label_timeseries (fallback -log or -log1p chi2_dof).
+  - Added MDL quantile forward selection (`--forward-mode mdl_quantile`) with `--mdl-quantile` (tercile split) and explicit backward mask.
+  - Added `--mdl-use-fallback-only` to force MDL fallback (e.g., -log chi2_dof) even if E_MDL_proxy exists.
+  - MDL quantile (terciles) + bidirectional two-sided sweep:
+    - overall interval: [0.10, 0.20] at thresholds 1.00 and 0.99.
+    - pinning label: `ptll_76_106_table` (tightest interval); next tightest `ttbar_mtt_8tev_cms`.
+  - MDL fallback-only (pure -log1p chi2_dof) tercile + bidirectional:
+    - overall interval: [0.10, 0.20] at thresholds 1.00 and 0.99.
+    - pinning label: `ptll_76_106_table`.
+  - MDL fallback-only quantile sweep (bidirectional, thresholds 1.00/0.99):
+    - q=0.25: interval [0.10, 0.20], pinning `ptll_76_106_table`.
+    - q=0.40: interval [0.10, 0.20], pinning `ptll_76_106_table`.
+  - Dense pos_scale scan (MDL fallback-only, q=1/3, bidirectional):
+    - scan 0.05..0.30 step 0.01; first overall failure at pos_scale=0.21.
+    - near cliff: pos_scale=0.20 => cone_frac_min=1.00, pos_scale=0.21 => 0.75.
+    - Q_p99 jumps to ~0.043 at 0.21; max_Q ~0.046.
+    - pinning label: `ptll_76_106_table`; first failing steps (forward) at iter 7→8 and 8→9.
+  - Fine pos_scale scan (0.20..0.22 step 0.002):
+    - first overall failure at pos_scale=0.204 (cone_frac_min=0.875).
+    - at 0.202: cone_frac_min=1.0; at 0.204: Q_p99≈0.00368, max_Q≈0.00396.
+    - pinning step at ptll_76_106_table: forward iter 8→9 (Q>0).
+  - MDL-based forward sweep (E_MDL_proxy, fallback -log1p chi2_dof):
+    - overall interval: [0.10, 0.20] at thresholds 1.00 and 0.99.
+    - pinning labels: `ptll_76_106_table`, `ttbar_mtt_8tev_cms`.
+  - Ran new forward modes:
+    - `order` forward: interval remains [0.10, 0.20] (threshold 1.0).
+    - `arrow_rank_freeze` with `v_depth`: interval remains [0.10, 0.20] (threshold 1.0).
+    - Two-sided `complement` with `v_depth`: no backward steps -> no valid interval.
+    - Two-sided `complement` with `v_arrow` rank-freeze: no valid interval; only 3 labels have both forward/backward steps under this mode.
+    - Two-sided `reverse_edges` (order forward): no valid interval even with eps up to 1e-4.
+    - Two-sided `bidirectional` with `v_arrow` rank-freeze (threshold 1.0):
+      - eps=1e-12..1e-8: interval [0.10, 0.20]
+      - eps=1e-6: interval [0.10, 0.30]
+      - eps=1e-4: interval [0.10, 0.85]
