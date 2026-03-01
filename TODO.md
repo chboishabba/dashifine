@@ -66,6 +66,12 @@
 - Add an option to auto-detect near-null Δ-axes (variance threshold) and drop them from the signature scan.
 - Add a short note in the cone-screen CLI help explaining the expected step column (`step` vs `iter`).
 
+- Verification-only tests for Arrow-Separated Delta Cone (next actions):
+  - Independence check: scatter/correlation of Δa vs Q(Δs) across all steps; expect ~0 correlation if arrow is cleanly separated.
+  - Regime stability: compare cone containment under keep_frac=1.0 vs keep_frac=0.7 (quota-preserving snap) and confirm same pinning label and no regime flip.
+  - Perturbation robustness: add tiny Gaussian noise to shape coords only and re-check containment (Q(Δs) ≤ 0) to ensure non-knife-edge behavior.
+  - Ultrametric check: verify strong triangle inequality on trajectory triples with current distance definition; report any violations (expect 0 or eps-only).
+
 - Robustness reporting (2026-02-26):
   - Added `33_scale_robustness.py` to report pos_scale interval lengths where cone_frac_min >= threshold.
   - Enforces indefinite masks by default (`--allow-definite` overrides).
@@ -75,6 +81,44 @@
   - Added MDL-based forward selection (`--forward-mode mdl`) using `E_MDL_proxy` from per_label_timeseries (fallback -log or -log1p chi2_dof).
   - Added MDL quantile forward selection (`--forward-mode mdl_quantile`) with `--mdl-quantile` (tercile split) and explicit backward mask.
   - Added `--mdl-use-fallback-only` to force MDL fallback (e.g., -log chi2_dof) even if E_MDL_proxy exists.
+  - Added snap filtering (exception class) via `--snap-filter` with beta-norm quantile/abs thresholds.
+  - Added snap signature filter (multi-coordinate zeroing + chi2 spike + MDL descent).
+  - Added joint snap signature (beta quantile + |Δdnorm| quantile + chi2 spike + MDL descent + zeroing).
+  - Added shrink-ratio snap signature (>=N components shrink by kappa, plus chi2 spike + MDL descent).
+  - Added shrink+dnorm joint snap signature (shrink_count >= N and |Δdnorm| in top quantile).
+  - Snap-filter trial (beta_norm_abs=1.0, MDL fallback q=1/3, bidirectional):
+    - coarse scan 0.10..0.30 step 0.01: interval extends to [0.10, 0.22] (thresholds 1.00/0.99).
+    - fine scan 0.20..0.24 step 0.002: interval [0.20, 0.224], pinned by ptll_76_106_table.
+  - Snap-signature filter trials:
+    - sig2 (beta q=0.90, chi2>=1.1, zero_min=0): interval stays [0.10, 0.20] (ptll still pins).
+    - sig3 (beta q=0.85, chi2>=1.02, zero_min=0): interval expands to [0.10, 0.22], ptll still pins.
+  - Joint signature (beta q=0.85, |Δdnorm| q=0.85, chi2>=1.02, zero_min=0):
+    - interval expands to [0.10, 0.22], ptll still pins.
+  - Shrink-ratio signature (kappa=0.1):
+    - shrink_min=2 yields no change (ptll still pins at [0.10,0.20]).
+    - shrink_min=1 expands to [0.10,0.22], ptll still pins.
+  - Shrink+dnorm joint signature (kappa=0.5, shrink_min=1, |Δdnorm| q=0.85):
+    - interval expands to [0.10, 0.22], ptll still pins.
+  - Shrink+dnorm variants:
+    - q=0.70 (kappa=0.5, shrink_min=1): interval [0.10, 0.22].
+    - kappa=0.2 (q=0.85, shrink_min=1): interval [0.10, 0.22].
+  - Added shrink+dnorm OR chi2 snap signature (shrink_count >= N and (|Δdnorm| in top quantile OR chi2_ratio >= factor)).
+  - Added `--min-steps-per-label` guard to avoid mode-starved labels in robustness sweeps.
+  - Added `34_snap_sweep.py` for quota-preserving snap sweeps (keep fraction per direction, min steps per label).
+  - Snap sweep (q=0.40, min-steps=3, score=beta_norm):
+    - coverage stays at 13 labels for keep_frac 1.0..0.3.
+    - interval expands from [0.10,0.20] to [0.10,0.22] once keep_frac <= 0.7.
+  - Snap score invariance: `beta_norm` vs `beta_norm_chi2` produce identical loss curves and pinner across all keep_fracs.
+    - Comparison table: `snap_sweep_q40_min3_score_comparison.csv`.
+  - Baseline coverage check (snap disabled, MDL fallback q=0.40, bidirectional, min-steps=3):
+    - Full coverage across all labels with uniform counts (n_fwd=5, n_bwd=5 per label).
+    - Interval remains [0.10, 0.20]; summary in `scale_mdl_fallback_q40_bidirectional_nosnap_min3_summary.csv`,
+      coverage in `scale_mdl_fallback_q40_bidirectional_nosnap_min3_coverage.csv`.
+  - shrink_or_chi2 results:
+    - chi2>=1.05: interval [0.10,0.22], ptll still pins (10→11 not caught).
+    - chi2>=1.01: interval [0.10,0.30], ptll no longer pins; new pinning label `z_pt_7tev_atlas`.
+  - shrink_or_chi2 with chi2>=1.015 and dnorm q=0.90: interval [0.10,0.22], ptll still pins (10→11 not caught).
+  - shrink_or_chi2 with chi2>=1.012, dnorm q=0.90, min-steps-per-label=5: n_labels=0 (over-filtered).
   - MDL quantile (terciles) + bidirectional two-sided sweep:
     - overall interval: [0.10, 0.20] at thresholds 1.00 and 0.99.
     - pinning label: `ptll_76_106_table` (tightest interval); next tightest `ttbar_mtt_8tev_cms`.
@@ -93,6 +137,22 @@
     - first overall failure at pos_scale=0.204 (cone_frac_min=0.875).
     - at 0.202: cone_frac_min=1.0; at 0.204: Q_p99≈0.00368, max_Q≈0.00396.
     - pinning step at ptll_76_106_table: forward iter 8→9 (Q>0).
+  - Critical-scale report (MDL fallback-only, q=1/3, forward steps):
+    - computed per-step s* = (Δp^2+Δa^2)/Δd^2; global minimum = 0.2034378752 at ptll_76_106_table 8→9.
+    - second smallest = 0.2099217488 at ptll_76_106_table 7→8 (gap ~0.00648).
+    - report saved: `scale_mdl_fallback_q33_bidirectional_s_star.csv`.
+  - ptll_76_106_table forward r* list (MDL tercile):
+    - r1=0.2034379 (8→9), r2=0.2099217 (7→8), r3=0.2203354 (9→10), r4=0.2249192 (10→11).
+    - gap ratio r2/r1 ≈ 1.0319.
+    - outputs: `ptll_76_106_table_r_star_forward.csv`, `ptll_76_106_table_r_star_forward.png` (log-scale).
+  - Whitening comparison (MDL tercile, forward steps):
+    - diag-whitened r* top-4: 8→9 (0.027552), 7→8 (0.027624), 9→10 (0.029948), 10→11 (0.030588).
+    - full-whitened r* top-4: 8→9 (0.084677), 9→10 (0.101254), 10→11 (0.106327), 7→8 (0.113612).
+    - ordering/cluster persists; scale shifts. Output: `ptll_76_106_table_r_star_forward_whiten.csv`.
+  - Canonical normalization trial (full-whitened, MDL fallback-only q=1/3, bidirectional):
+    - For target Q_p99=0, use s = quantile_{0.01}(sn/sp) = 0.0887006687.
+    - Overall cone_frac_min=0.875, mean=0.9904; holdout (exclude ptll_76_106_table) min/mean=1.0.
+    - Outputs: `full_whiten_qpin_summary_fixed.csv`, `full_whiten_qpin_per_label_fixed.csv`.
   - MDL-based forward sweep (E_MDL_proxy, fallback -log1p chi2_dof):
     - overall interval: [0.10, 0.20] at thresholds 1.00 and 0.99.
     - pinning labels: `ptll_76_106_table`, `ttbar_mtt_8tev_cms`.

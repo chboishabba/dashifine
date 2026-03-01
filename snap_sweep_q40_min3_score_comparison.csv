@@ -1,0 +1,17 @@
+keep_frac,score,n_labels,mean_fwd,mean_bwd,interval_lo,interval_hi,pinned_label
+0.3,beta_norm,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.3,beta_norm_chi2,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.4,beta_norm,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.4,beta_norm_chi2,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.5,beta_norm,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.5,beta_norm_chi2,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.6,beta_norm,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.6,beta_norm_chi2,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.7,beta_norm,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.7,beta_norm_chi2,13,3.0,3.0,0.1,0.22,ptll_76_106_table
+0.8,beta_norm,13,4.0,4.0,0.1,0.2,ptll_76_106_table
+0.8,beta_norm_chi2,13,4.0,4.0,0.1,0.2,ptll_76_106_table
+0.9,beta_norm,13,4.0,4.0,0.1,0.2,ptll_76_106_table
+0.9,beta_norm_chi2,13,4.0,4.0,0.1,0.2,ptll_76_106_table
+1.0,beta_norm,13,5.0,5.0,0.1,0.2,ptll_76_106_table
+1.0,beta_norm_chi2,13,5.0,5.0,0.1,0.2,ptll_76_106_table

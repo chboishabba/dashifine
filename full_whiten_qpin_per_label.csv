@@ -1,0 +1,14 @@
+label,cone_frac_bidirectional
+atlas_4l_m4l_8tev,0.0
+atlas_4l_pt4l_8tev,0.0
+dijet_chi_13tev_cms_mgt6,0.0
+dijet_chi_7tev_cms,0.0
+hgg_pt_8tev_atlas,0.125
+pTll_106_170,0.0
+pTll_170_350,0.0
+pTll_50_76,0.125
+pTll_76_106,0.0
+phistar_50_76,0.25
+ptll_76_106_table,0.0
+ttbar_mtt_8tev_cms,0.125
+z_pt_7tev_atlas,0.0

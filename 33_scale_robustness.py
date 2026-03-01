@@ -149,6 +149,18 @@ def _compute_label_stats(
     mdl_eps: float,
     mdl_direction: str,
     mdl_quantile: float,
+    beta_map: Dict[str, np.ndarray] | None,
+    chi2_map: Dict[str, np.ndarray] | None,
+    snap_filter: str,
+    snap_beta_quantile: float,
+    snap_beta_abs: float,
+    snap_zero_eps: float,
+    snap_zero_min: int,
+    snap_chi2_factor: float,
+    snap_mdl_eps: float,
+    snap_dnorm_quantile: float,
+    snap_shrink_kappa: float,
+    snap_shrink_min: int,
     noise_std: float,
     noise_scale: str,
     rng: np.random.Generator,
@@ -174,6 +186,7 @@ def _compute_label_stats(
             continue
         dX = X[1:] - X[:-1]
         backward = None
+        snap_keep = None
         if forward_mode == "order":
             forward = np.ones(len(dX), dtype=bool)
         elif forward_mode == "arrow_rank_freeze":
@@ -208,10 +221,186 @@ def _compute_label_stats(
         else:
             dA = A[1:] - A[:-1]
             forward = dA >= (-eps_arrow)
+        if snap_filter != "none":
+            if beta_map is None or str(lab) not in beta_map:
+                raise ValueError(f"beta map missing for label {lab}")
+            B = beta_map[str(lab)]
+            if len(B) != len(g):
+                raise ValueError(f"beta length mismatch for label {lab}: {len(B)} vs {len(g)}")
+            dB = B[1:] - B[:-1]
+            dB_norm = np.linalg.norm(dB, axis=1)
+            if snap_filter == "beta_norm_quantile":
+                q = float(snap_beta_quantile)
+                if not (0.0 < q < 1.0):
+                    raise ValueError("--snap-beta-quantile must be in (0,1)")
+                thresh = np.nanquantile(dB_norm, q)
+                snap_keep = dB_norm <= thresh
+            elif snap_filter == "beta_norm_abs":
+                snap_keep = dB_norm <= snap_beta_abs
+            elif snap_filter == "signature":
+                if chi2_map is None or str(lab) not in chi2_map:
+                    raise ValueError(f"chi2 map missing for label {lab}")
+                chi = chi2_map[str(lab)]
+                if len(chi) != len(g):
+                    raise ValueError(f"chi2 length mismatch for label {lab}: {len(chi)} vs {len(g)}")
+                if mdl_map is None or str(lab) not in mdl_map:
+                    raise ValueError(f"MDL map missing for label {lab}")
+                mdl = mdl_map[str(lab)]
+                if len(mdl) != len(g):
+                    raise ValueError(f"MDL length mismatch for label {lab}: {len(mdl)} vs {len(g)}")
+                # chi2 spike
+                chi_prev = np.maximum(chi[:-1], 1e-12)
+                chi_curr = np.maximum(chi[1:], 1e-12)
+                chi_ratio = chi_curr / chi_prev
+                # mdl descent
+                dM = mdl[1:] - mdl[:-1]
+                # large beta move (quantile threshold)
+                q = float(snap_beta_quantile)
+                if not (0.0 < q < 1.0):
+                    raise ValueError("--snap-beta-quantile must be in (0,1)")
+                thresh = np.nanquantile(dB_norm, q)
+                large_beta = dB_norm >= thresh
+                # optional zeroing count: components crossing to (near) zero
+                if snap_zero_min > 0:
+                    prev = B[:-1]
+                    curr = B[1:]
+                    zeroing = (np.abs(prev) > snap_zero_eps) & (np.abs(curr) <= snap_zero_eps)
+                    zero_count = np.sum(zeroing, axis=1)
+                    zero_ok = zero_count >= snap_zero_min
+                else:
+                    zero_ok = np.ones_like(dB_norm, dtype=bool)
+                snap = large_beta & (chi_ratio >= snap_chi2_factor) & (dM <= -snap_mdl_eps) & zero_ok
+                snap_keep = ~snap
+            elif snap_filter == "joint_signature":
+                if chi2_map is None or str(lab) not in chi2_map:
+                    raise ValueError(f"chi2 map missing for label {lab}")
+                chi = chi2_map[str(lab)]
+                if len(chi) != len(g):
+                    raise ValueError(f"chi2 length mismatch for label {lab}: {len(chi)} vs {len(g)}")
+                if mdl_map is None or str(lab) not in mdl_map:
+                    raise ValueError(f"MDL map missing for label {lab}")
+                mdl = mdl_map[str(lab)]
+                if len(mdl) != len(g):
+                    raise ValueError(f"MDL length mismatch for label {lab}: {len(mdl)} vs {len(g)}")
+                # chi2 spike + mdl descent
+                chi_prev = np.maximum(chi[:-1], 1e-12)
+                chi_curr = np.maximum(chi[1:], 1e-12)
+                chi_ratio = chi_curr / chi_prev
+                dM = mdl[1:] - mdl[:-1]
+                # large beta move (quantile threshold)
+                q = float(snap_beta_quantile)
+                if not (0.0 < q < 1.0):
+                    raise ValueError("--snap-beta-quantile must be in (0,1)")
+                beta_thresh = np.nanquantile(dB_norm, q)
+                large_beta = dB_norm >= beta_thresh
+                # large |delta dnorm| threshold
+                dnorm = np.abs(dX[:, 1])
+                qd = float(snap_dnorm_quantile)
+                if not (0.0 < qd < 1.0):
+                    raise ValueError("--snap-dnorm-quantile must be in (0,1)")
+                dnorm_thresh = np.nanquantile(dnorm, qd)
+                large_dnorm = dnorm >= dnorm_thresh
+                # zeroing count
+                if snap_zero_min > 0:
+                    prev = B[:-1]
+                    curr = B[1:]
+                    zeroing = (np.abs(prev) > snap_zero_eps) & (np.abs(curr) <= snap_zero_eps)
+                    zero_count = np.sum(zeroing, axis=1)
+                    zero_ok = zero_count >= snap_zero_min
+                else:
+                    zero_ok = np.ones_like(dB_norm, dtype=bool)
+                snap = large_beta & large_dnorm & (chi_ratio >= snap_chi2_factor) & (dM <= -snap_mdl_eps) & zero_ok
+                snap_keep = ~snap
+            elif snap_filter == "shrink_ratio":
+                if chi2_map is None or str(lab) not in chi2_map:
+                    raise ValueError(f"chi2 map missing for label {lab}")
+                chi = chi2_map[str(lab)]
+                if len(chi) != len(g):
+                    raise ValueError(f"chi2 length mismatch for label {lab}: {len(chi)} vs {len(g)}")
+                if mdl_map is None or str(lab) not in mdl_map:
+                    raise ValueError(f"MDL map missing for label {lab}")
+                mdl = mdl_map[str(lab)]
+                if len(mdl) != len(g):
+                    raise ValueError(f"MDL length mismatch for label {lab}: {len(mdl)} vs {len(g)}")
+                chi_prev = np.maximum(chi[:-1], 1e-12)
+                chi_curr = np.maximum(chi[1:], 1e-12)
+                chi_ratio = chi_curr / chi_prev
+                dM = mdl[1:] - mdl[:-1]
+                prev = B[:-1]
+                curr = B[1:]
+                denom = np.maximum(np.abs(prev), 1e-12)
+                shrink = (np.abs(curr) / denom) <= snap_shrink_kappa
+                shrink_count = np.sum(shrink, axis=1)
+                shrink_ok = shrink_count >= snap_shrink_min
+                snap = shrink_ok & (chi_ratio >= snap_chi2_factor) & (dM <= -snap_mdl_eps)
+                snap_keep = ~snap
+            elif snap_filter == "shrink_dnorm":
+                if chi2_map is None or str(lab) not in chi2_map:
+                    raise ValueError(f"chi2 map missing for label {lab}")
+                chi = chi2_map[str(lab)]
+                if len(chi) != len(g):
+                    raise ValueError(f"chi2 length mismatch for label {lab}: {len(chi)} vs {len(g)}")
+                if mdl_map is None or str(lab) not in mdl_map:
+                    raise ValueError(f"MDL map missing for label {lab}")
+                mdl = mdl_map[str(lab)]
+                if len(mdl) != len(g):
+                    raise ValueError(f"MDL length mismatch for label {lab}: {len(mdl)} vs {len(g)}")
+                chi_prev = np.maximum(chi[:-1], 1e-12)
+                chi_curr = np.maximum(chi[1:], 1e-12)
+                chi_ratio = chi_curr / chi_prev
+                dM = mdl[1:] - mdl[:-1]
+                prev = B[:-1]
+                curr = B[1:]
+                denom = np.maximum(np.abs(prev), 1e-12)
+                shrink = (np.abs(curr) / denom) <= snap_shrink_kappa
+                shrink_count = np.sum(shrink, axis=1)
+                shrink_ok = shrink_count >= snap_shrink_min
+                # dnorm quantile
+                dnorm = np.abs(dX[:, 1])
+                qd = float(snap_dnorm_quantile)
+                if not (0.0 < qd < 1.0):
+                    raise ValueError("--snap-dnorm-quantile must be in (0,1)")
+                dnorm_thresh = np.nanquantile(dnorm, qd)
+                large_dnorm = dnorm >= dnorm_thresh
+                snap = shrink_ok & large_dnorm & (chi_ratio >= snap_chi2_factor) & (dM <= -snap_mdl_eps)
+                snap_keep = ~snap
+            elif snap_filter == "shrink_or_chi2":
+                if chi2_map is None or str(lab) not in chi2_map:
+                    raise ValueError(f"chi2 map missing for label {lab}")
+                chi = chi2_map[str(lab)]
+                if len(chi) != len(g):
+                    raise ValueError(f"chi2 length mismatch for label {lab}: {len(chi)} vs {len(g)}")
+                if mdl_map is None or str(lab) not in mdl_map:
+                    raise ValueError(f"MDL map missing for label {lab}")
+                mdl = mdl_map[str(lab)]
+                if len(mdl) != len(g):
+                    raise ValueError(f"MDL length mismatch for label {lab}: {len(mdl)} vs {len(g)}")
+                chi_prev = np.maximum(chi[:-1], 1e-12)
+                chi_curr = np.maximum(chi[1:], 1e-12)
+                chi_ratio = chi_curr / chi_prev
+                dM = mdl[1:] - mdl[:-1]
+                prev = B[:-1]
+                curr = B[1:]
+                denom = np.maximum(np.abs(prev), 1e-12)
+                shrink = (np.abs(curr) / denom) <= snap_shrink_kappa
+                shrink_count = np.sum(shrink, axis=1)
+                shrink_ok = shrink_count >= snap_shrink_min
+                # dnorm quantile
+                dnorm = np.abs(dX[:, 1])
+                qd = float(snap_dnorm_quantile)
+                if not (0.0 < qd < 1.0):
+                    raise ValueError("--snap-dnorm-quantile must be in (0,1)")
+                dnorm_thresh = np.nanquantile(dnorm, qd)
+                large_dnorm = dnorm >= dnorm_thresh
+                snap = shrink_ok & (dM <= -snap_mdl_eps) & (large_dnorm | (chi_ratio >= snap_chi2_factor))
+                snap_keep = ~snap
+            else:
+                raise ValueError(f"unknown snap_filter: {snap_filter}")
         out[str(lab)] = {
             "dX": dX,
             "forward": forward,
             "backward": backward,
+            "snap_keep": snap_keep,
         }
     return out
 
@@ -225,6 +414,7 @@ def _sweep_for_variant(
     resample_steps: bool,
     rng: np.random.Generator,
     two_sided: str,
+    min_steps_per_label: int,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     per_label_rows = []
     overall_rows = []
@@ -236,6 +426,9 @@ def _sweep_for_variant(
         forward = d["forward"]
         backward = d.get("backward")
         keep = _jump_filter_mask(dX, forward, jump_filter_frac)
+        snap_keep = d.get("snap_keep")
+        if snap_keep is not None:
+            keep = keep & snap_keep
         fwd = forward & keep
         if backward is None:
             bwd = (~forward) & keep
@@ -253,6 +446,10 @@ def _sweep_for_variant(
                 idx_b = rng.choice(idx_b, size=len(idx_b), replace=True)
         else:
             idx_b = np.array([], dtype=int)
+        if min_steps_per_label > 1:
+            if len(idx_f) < min_steps_per_label or (two_sided in ("complement", "bidirectional") and len(idx_b) < min_steps_per_label):
+                per_label_data[lab] = None
+                continue
         per_label_data[lab] = (dX[idx_f], dX[idx_b])
 
     for pos_scale in pos_scales:
@@ -309,6 +506,8 @@ def _sweep_for_variant(
         })
 
     per_label_df = pd.DataFrame(per_label_rows)
+    if per_label_df.empty:
+        per_label_df = pd.DataFrame(columns=["label", "pos_scale", "cone_frac"])
     overall_df = pd.DataFrame(overall_rows)
     return per_label_df, overall_df
 
@@ -345,6 +544,7 @@ def main() -> None:
     ap.add_argument("--resample-seed", type=int, default=0)
     ap.add_argument("--two-sided", choices=["none", "complement", "reverse_edges", "bidirectional"], default="none",
                     help="two-sided: complement uses backward steps with Q>=-eps; reverse_edges uses -dX on same edges; bidirectional uses backward steps with same Q<=eps")
+    ap.add_argument("--min-steps-per-label", type=int, default=1)
 
     ap.add_argument("--mdl-timeseries", default="")
     ap.add_argument("--mdl-col", default="E_MDL_proxy")
@@ -354,6 +554,17 @@ def main() -> None:
     ap.add_argument("--mdl-eps", type=float, default=1e-12)
     ap.add_argument("--mdl-direction", choices=["decrease", "increase"], default="decrease")
     ap.add_argument("--mdl-quantile", type=float, default=0.33)
+    ap.add_argument("--snap-filter", choices=["none", "beta_norm_quantile", "beta_norm_abs", "signature", "joint_signature", "shrink_ratio", "shrink_dnorm", "shrink_or_chi2"], default="none")
+    ap.add_argument("--snap-beta-quantile", type=float, default=0.95)
+    ap.add_argument("--snap-beta-abs", type=float, default=0.0)
+    ap.add_argument("--snap-beta-cols", default="b0,b1,b2,b3,b4")
+    ap.add_argument("--snap-zero-eps", type=float, default=1e-6)
+    ap.add_argument("--snap-zero-min", type=int, default=2)
+    ap.add_argument("--snap-chi2-factor", type=float, default=10.0)
+    ap.add_argument("--snap-mdl-eps", type=float, default=1e-12)
+    ap.add_argument("--snap-dnorm-quantile", type=float, default=0.85)
+    ap.add_argument("--snap-shrink-kappa", type=float, default=0.1)
+    ap.add_argument("--snap-shrink-min", type=int, default=2)
 
     ap.add_argument("--out-prefix", default="scale_robustness")
     args = ap.parse_args()
@@ -376,6 +587,8 @@ def main() -> None:
     noise_stds = _parse_list(args.noise_stds, float)
 
     mdl_map = None
+    beta_map = None
+    chi2_map = None
     if args.forward_mode in ("mdl", "mdl_quantile"):
         if not args.mdl_timeseries:
             raise ValueError("--mdl-timeseries is required when --forward-mode mdl")
@@ -403,6 +616,40 @@ def main() -> None:
             else:
                 raise ValueError(f"timeseries missing {args.mdl_col} and fallback {args.mdl_fallback} for label {lab}")
             mdl_map[str(lab)] = mdl
+        if args.snap_filter != "none":
+            beta_cols = [c.strip() for c in args.snap_beta_cols.split(",") if c.strip() != ""]
+            beta_cols = [c for c in beta_cols if c in ts.columns]
+            if not beta_cols:
+                raise ValueError("snap filter requires beta columns (b0..b4) in timeseries")
+            beta_map = {}
+            chi2_map = {}
+            for lab, g in ts.groupby(LABEL_COL):
+                g = g.sort_values(step_col, kind="mergesort")
+                beta_map[str(lab)] = g[beta_cols].to_numpy(dtype=float)
+                if "chi2_dof" in g.columns:
+                    chi2_map[str(lab)] = g["chi2_dof"].to_numpy(dtype=float)
+    elif args.snap_filter != "none":
+        if not args.mdl_timeseries:
+            raise ValueError("--mdl-timeseries is required when using snap filter")
+        ts = pd.read_csv(args.mdl_timeseries)
+        if LABEL_COL not in ts.columns:
+            raise ValueError("timeseries missing label column")
+        if step_col not in ts.columns:
+            if "iter" in ts.columns and step_col != "iter":
+                ts = ts.rename(columns={"iter": step_col})
+            else:
+                raise ValueError(f"timeseries missing step column {step_col}")
+        beta_cols = [c.strip() for c in args.snap_beta_cols.split(",") if c.strip() != ""] 
+        beta_cols = [c for c in beta_cols if c in ts.columns]
+        if not beta_cols:
+            raise ValueError("snap filter requires beta columns (b0..b4) in timeseries")
+        beta_map = {}
+        chi2_map = {}
+        for lab, g in ts.groupby(LABEL_COL):
+            g = g.sort_values(step_col, kind="mergesort")
+            beta_map[str(lab)] = g[beta_cols].to_numpy(dtype=float)
+            if "chi2_dof" in g.columns:
+                chi2_map[str(lab)] = g["chi2_dof"].to_numpy(dtype=float)
 
     summary_rows = []
     per_label_interval_rows = []
@@ -428,6 +675,18 @@ def main() -> None:
                 mdl_eps=args.mdl_eps,
                 mdl_direction=args.mdl_direction,
                 mdl_quantile=args.mdl_quantile,
+                beta_map=beta_map,
+                chi2_map=chi2_map,
+                snap_filter=args.snap_filter,
+                snap_beta_quantile=args.snap_beta_quantile,
+                snap_beta_abs=args.snap_beta_abs,
+                snap_zero_eps=args.snap_zero_eps,
+                snap_zero_min=args.snap_zero_min,
+                snap_chi2_factor=args.snap_chi2_factor,
+                snap_mdl_eps=args.snap_mdl_eps,
+                snap_dnorm_quantile=args.snap_dnorm_quantile,
+                snap_shrink_kappa=args.snap_shrink_kappa,
+                snap_shrink_min=args.snap_shrink_min,
                 noise_std=noise_std,
                 noise_scale=args.noise_scale,
                 rng=rng,
@@ -442,6 +701,7 @@ def main() -> None:
                 resample_steps=args.resample_steps,
                 rng=res_rng,
                 two_sided=args.two_sided,
+                min_steps_per_label=args.min_steps_per_label,
             )
 
             for thr in thresholds:

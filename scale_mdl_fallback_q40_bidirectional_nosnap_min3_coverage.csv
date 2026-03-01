@@ -1,0 +1,14 @@
+label,n_steps,n_forward,n_backward,q,meets_min3
+atlas_4l_m4l_8tev,12,5,5,0.4,True
+atlas_4l_pt4l_8tev,12,5,5,0.4,True
+dijet_chi_13tev_cms_mgt6,12,5,5,0.4,True
+dijet_chi_7tev_cms,12,5,5,0.4,True
+hgg_pt_8tev_atlas,12,5,5,0.4,True
+pTll_106_170,12,5,5,0.4,True
+pTll_170_350,12,5,5,0.4,True
+pTll_50_76,12,5,5,0.4,True
+pTll_76_106,12,5,5,0.4,True
+phistar_50_76,12,5,5,0.4,True
+ptll_76_106_table,12,5,5,0.4,True
+ttbar_mtt_8tev_cms,12,5,5,0.4,True
+z_pt_7tev_atlas,12,5,5,0.4,True

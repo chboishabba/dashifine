@@ -1,0 +1,3 @@
+variant_id,arrow_col,arrow_transform,forward_mode,two_sided,eps,eps_arrow,jump_filter_frac,noise_std,noise_scale,resample_steps,resample_rep,threshold,overall_interval_start,overall_interval_end,overall_interval_len,n_labels
+1,v_depth,identity,mdl_quantile,bidirectional,1e-12,1e-12,0.0,0.0,abs,False,0,1.0,0.1,0.2,0.1,12
+1,v_depth,identity,mdl_quantile,bidirectional,1e-12,1e-12,0.0,0.0,abs,False,0,0.99,0.1,0.2,0.1,12
