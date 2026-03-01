@@ -114,6 +114,12 @@
     - Full coverage across all labels with uniform counts (n_fwd=5, n_bwd=5 per label).
     - Interval remains [0.10, 0.20]; summary in `scale_mdl_fallback_q40_bidirectional_nosnap_min3_summary.csv`,
       coverage in `scale_mdl_fallback_q40_bidirectional_nosnap_min3_coverage.csv`.
+  - Arrow/shape independence check (Δa vs Q(Δs)):
+    - Pearson r ≈ -9.76e-4, Spearman r ≈ -0.1008 (near-zero correlation).
+    - Outputs: `arrow_shape_independence.csv`, `arrow_shape_independence.png`, `arrow_shape_independence_summary.txt`.
+  - Ultrametric triangle check (LCP-depth metric on ternary lens vectors):
+    - Strong triangle inequality holds with 0 violations across 40,000 trials.
+    - Output: `ultrametric_triangle_report.csv`.
   - shrink_or_chi2 results:
     - chi2>=1.05: interval [0.10,0.22], ptll still pins (10→11 not caught).
     - chi2>=1.01: interval [0.10,0.30], ptll no longer pins; new pinning label `z_pt_7tev_atlas`.

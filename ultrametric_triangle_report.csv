@@ -1,0 +1,9 @@
+label,n_points,trials,violations,max_violation
+atlas_4l_m4l_8tev,10,5000,0,0.0
+atlas_4l_pt4l_8tev,7,5000,0,0.0
+dijet_chi_13tev_cms_mgt6,5,5000,0,0.0
+dijet_chi_7tev_cms,3,5000,0,0.0
+hgg_pt_8tev_atlas,7,5000,0,0.0
+ptll_76_106_table,1369,5000,0,0.0
+ttbar_mtt_8tev_cms,7,5000,0,0.0
+z_pt_7tev_atlas,26,5000,0,0.0

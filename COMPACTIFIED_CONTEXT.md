@@ -36,6 +36,8 @@
 - Added 34_snap_sweep.py; quota-preserving snap sweep shows full coverage with keep_frac>=0.3 and window expands to [0.10,0.22] for keep_frac<=0.7.
 - Snap score invariance: beta_norm vs beta_norm_chi2 yields identical loss curve and pinned label; comparison in `snap_sweep_q40_min3_score_comparison.csv`.
 - Baseline coverage with snap disabled (MDL fallback q=0.40, bidirectional, min-steps=3): uniform n_fwd=5, n_bwd=5 per label; interval [0.10, 0.20]; outputs `scale_mdl_fallback_q40_bidirectional_nosnap_min3_summary.csv` and `_coverage.csv`.
+- Arrow/shape independence check: Pearson r ≈ -9.76e-4, Spearman r ≈ -0.1008; outputs `arrow_shape_independence.csv`, `arrow_shape_independence.png`, `arrow_shape_independence_summary.txt`.
+- Ultrametric triangle check (LCP-depth metric on ternary lens vectors): 0 violations across 40,000 trials; output `ultrametric_triangle_report.csv`.
 - shrink_or_chi2: with chi2>=1.05 -> [0.10,0.22] (ptll still pins); with chi2>=1.01 -> [0.10,0.30], ptll removed, new pin z_pt_7tev_atlas.
 - shrink_or_chi2 with chi2>=1.015 and dnorm q=0.90 keeps [0.10,0.22], ptll still pins (10→11 not caught).
 - shrink_or_chi2 with chi2>=1.012 and min-steps-per-label=5 drops all labels (over-filtered).
