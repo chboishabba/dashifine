@@ -38,6 +38,7 @@
 - Baseline coverage with snap disabled (MDL fallback q=0.40, bidirectional, min-steps=3): uniform n_fwd=5, n_bwd=5 per label; interval [0.10, 0.20]; outputs `scale_mdl_fallback_q40_bidirectional_nosnap_min3_summary.csv` and `_coverage.csv`.
 - Arrow/shape independence check: Pearson r ≈ -9.76e-4, Spearman r ≈ -0.1008; outputs `arrow_shape_independence.csv`, `arrow_shape_independence.png`, `arrow_shape_independence_summary.txt`.
 - Ultrametric triangle check (LCP-depth metric on ternary lens vectors): 0 violations across 40,000 trials; output `ultrametric_triangle_report.csv`.
+- Masked Orthogonal Split test (3D closure embedding): G=diag([-1,0.2034,-1]), P projects onto coords [0,1]; self_adj_error=0, cross_max_abs≈2.40e-16, energy_residual_max_abs≈6.66e-16; output `masked_orthogonal_split_report.csv` (plus `G_mask3.npy`, `P_shape01_from_G_mask3.npy`).
 - shrink_or_chi2: with chi2>=1.05 -> [0.10,0.22] (ptll still pins); with chi2>=1.01 -> [0.10,0.30], ptll removed, new pin z_pt_7tev_atlas.
 - shrink_or_chi2 with chi2>=1.015 and dnorm q=0.90 keeps [0.10,0.22], ptll still pins (10→11 not caught).
 - shrink_or_chi2 with chi2>=1.012 and min-steps-per-label=5 drops all labels (over-filtered).

@@ -1,0 +1,2 @@
+self_adj_error,cross_mean,cross_std,cross_max_abs,energy_residual_mean,energy_residual_std,energy_residual_max_abs,n_steps,dim
+0.0,2.049056122401027e-18,1.969291711047051e-17,2.396219163298509e-16,5.51836682447941e-18,5.4742265604838763e-17,6.661338147750939e-16,156,3

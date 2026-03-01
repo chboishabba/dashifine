@@ -120,6 +120,10 @@
   - Ultrametric triangle check (LCP-depth metric on ternary lens vectors):
     - Strong triangle inequality holds with 0 violations across 40,000 trials.
     - Output: `ultrametric_triangle_report.csv`.
+  - Masked Orthogonal Split test (3D closure embedding):
+    - G (diag mask) = diag([-1, 0.2034, -1]), P projects to shape coords [0,1].
+    - self_adj_error = 0.0, cross_max_abs ≈ 2.40e-16, energy_residual_max_abs ≈ 6.66e-16.
+    - Output: `masked_orthogonal_split_report.csv`, artifacts: `G_mask3.npy`, `P_shape01_from_G_mask3.npy`.
   - shrink_or_chi2 results:
     - chi2>=1.05: interval [0.10,0.22], ptll still pins (10→11 not caught).
     - chi2>=1.01: interval [0.10,0.30], ptll no longer pins; new pinning label `z_pt_7tev_atlas`.
