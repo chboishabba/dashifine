@@ -39,6 +39,7 @@
 - Arrow/shape independence check: Pearson r ≈ -9.76e-4, Spearman r ≈ -0.1008; outputs `arrow_shape_independence.csv`, `arrow_shape_independence.png`, `arrow_shape_independence_summary.txt`.
 - Ultrametric triangle check (LCP-depth metric on ternary lens vectors): 0 violations across 40,000 trials; output `ultrametric_triangle_report.csv`.
 - Masked Orthogonal Split test (3D closure embedding): G=diag([-1,0.2034,-1]), P projects onto coords [0,1]; self_adj_error=0, cross_max_abs≈2.40e-16, energy_residual_max_abs≈6.66e-16; output `masked_orthogonal_split_report.csv` (plus `G_mask3.npy`, `P_shape01_from_G_mask3.npy`).
+- Orbit profile tables regenerated with signed block permutations (Sp×Sq, sign flips), shells |Q|=1,2, in `orbit_profiles/` via `40_generate_orbit_profiles.py`. Key shell1 profiles: p1q2=[8,4,2], p2q1=[8,4,2], p3q1=[24,6,2], p4q0=[8], p2q2=[16,16,4,4], p1q3=[24,6,2], p0q4=[8].
 - shrink_or_chi2: with chi2>=1.05 -> [0.10,0.22] (ptll still pins); with chi2>=1.01 -> [0.10,0.30], ptll removed, new pin z_pt_7tev_atlas.
 - shrink_or_chi2 with chi2>=1.015 and dnorm q=0.90 keeps [0.10,0.22], ptll still pins (10→11 not caught).
 - shrink_or_chi2 with chi2>=1.012 and min-steps-per-label=5 drops all labels (over-filtered).
