@@ -180,6 +180,7 @@ def main(
     z0_steps: int = 1,
     w0_steps: int = 1,
     slopes: np.ndarray | None = None,
+    log_paths: bool = False,
 ) -> Dict[str, Any]:
     """Generate a couple of tiny placeholder images."""
 
@@ -197,6 +198,10 @@ def main(
     coarse_path = out_dir / "coarse.png"
     plt.imsave(coarse_path, coarse, cmap="gray")
 
+    if log_paths:
+        print(f"Wrote slice image: {slice_path}")
+        print(f"Wrote coarse image: {coarse_path}")
+
     return {"paths": {"slice": str(slice_path), "coarse": str(coarse_path)}}
 
 
@@ -204,4 +209,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output_dir", type=str, default="examples")
     args = parser.parse_args()
-    main(args.output_dir)
+    main(args.output_dir, log_paths=True)

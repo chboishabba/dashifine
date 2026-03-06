@@ -53,6 +53,114 @@ slices, and a `summary.json` file to `/mnt/data`. See
 * Creates zero-filled PNG placeholders in the requested output directory. This
   script is intentionally lightweight so that tests exercise import/CLI
   behaviour without running the heavy numerical pipeline.
+* When run as a script, prints the output paths for quick verification in logs.
+  The broader project map also lists this entry point in
+  `trading/TRADER_CONTEXT.md:31953`.
+
+### Wave-kernel benchmark (`newtest/wave_krr.py`)
+
+* Kernel ridge regression benchmark that uses a dashifine spectral kernel
+  over a 2D wave superposition task.
+* Inputs live on the torus domain `[-pi, pi]^2`, matching the wavefront
+  discussion in `CONTEXT.md:300` and `CONTEXT.md:471`.
+* Run with `python newtest/wave_krr.py` from the `dashifine/` directory.
+
+#### Interpreting the temperature sweep
+
+* Low temperatures are overly narrow in spectrum, which can exclude the true
+  wavevectors and lead to high error.
+* Mid-range temperatures tend to admit the true modes and trigger a sharp
+  generalization improvement with few samples.
+* Higher temperatures can provide a better bias-variance tradeoff by covering
+  the true modes while tolerating observation noise.
+
+**Claims supported by this benchmark**
+* The dashifine kernel geometry can align with latent wave invariants and allow
+  KRR to recover them with few samples.
+* Temperature acts as a spectral control parameter for the hypothesis class.
+
+**Baseline comparison (wave-field task)**
+Under identical train/test splits and regularization, the dashifine spectral
+kernel achieved lower test error (MSE ≈ 0.010 at T=4.0) than both a standard
+RBF kernel (best MSE ≈ 0.025) and a periodic RBF kernel on the torus (best
+MSE ≈ 0.015). Eigenspectrum diagnostics show dashifine concentrates spectral
+mass on wave-aligned modes, while RBF variants exhibit smoother spectral decay.
+This supports the interpretation that dashifine’s advantage arises from
+spectral alignment with task invariants, not smoothness or periodicity alone.
+
+**Not yet supported**
+* Universal learning across arbitrary projections.
+* A claim that unitary dynamics are unnecessary for all tasks.
+
+**Next diagnostic steps**
+* Plot the kernel eigenspectrum across temperatures to track when the true
+  modes enter the effective hypothesis class.
+* Compare against an RBF baseline on the same task and sample budget.
+* Stress-test projections by masking or subsampling the input domain.
+
+This diagnostic plan mirrors the spectrum-first guidance in `CONTEXT.md:2620`
+through `CONTEXT.md:2733`.
+
+Baseline comparison runs are described in `CONTEXT.md:2809` through
+`CONTEXT.md:2938`, and `newtest/wave_krr.py` prints MSE sweeps for dashifine,
+RBF, and periodic RBF kernels under the same train/test split and ridge
+regularization.
+
+For each benchmark sweep, capture outputs either as logged summaries (text) or
+saved plots so results are documented and reproducible. When saving a series of
+PNG frames (e.g., during training or rollouts), it is fine to emit the frames,
+but roll them into a GIF or similar artifact afterward for storage efficiency.
+The rollout guidance in `CONTEXT.md:4339` through `CONTEXT.md:4379` mirrors this
+expectation. The spectral diagnostic prompt is also noted in `CONTEXT.md:1696`.
+Benchmark scripts now create timestamped subdirectories under `--output_dir`,
+so outputs are never overwritten by default.
+
+The Phase-2 operator-learning priority (reaction–diffusion / Gray–Scott) is
+outlined in `CONTEXT.md:3021`.
+
+### Operator learning benchmark (`newtest/grayscott_krr.py`)
+
+* One-step Gray–Scott reaction–diffusion prediction using kernel ridge
+  regression with dashifine vs periodic RBF baselines.
+* Logs metrics and saves plots for spectra and field snapshots so outputs are
+  reproducible, per the benchmark output policy above.
+* The operator-learning framing is captured in `CONTEXT.md:3021` and
+  `CONTEXT.md:3128`.
+* Outputs: `run_summary.txt`, `spectrum_*.png`, and `field_comparison.png` in
+  the chosen output directory (default `outputs/grayscott_krr`).
+* If `--rollout_steps` exceeds the available simulated frames, the rollout is
+  truncated to the maximum feasible horizon (based on `--steps` and `--burn_in`)
+  and the summary logs the truncation.
+* One-step Gray–Scott results are expected to favor diffusion-aligned kernels
+  (periodic RBF) on U (feed field) while still matching V (activator) structure
+  closely. This reflects U’s Laplacian-dominated dynamics vs V’s reaction-driven
+  patterns, and it sets up the next multi-step rollout test described in
+  `CONTEXT.md:3021` and `CONTEXT.md:3128`.
+* Multi-step rollouts log error vs horizon and save snapshot grids plus a
+  rollout metrics CSV (including U/V MSE and mass proxies), aligning with
+  `CONTEXT.md:3047`, `CONTEXT.md:3153`, and `CONTEXT.md:3639`.
+* `field_comparison.png` is a single-step, projection-consistent representative,
+  not a rollout attractor. Rollout frames can move along a gauge orbit while
+  keeping projection-relevant structure intact, as described in
+  `CONTEXT.md:3862` through `CONTEXT.md:3998`.
+* Optional GIF export: pass `--rollout_gif_steps 100` (and optional
+  `--rollout_gif_stride`, `--rollout_gif_fps`) to save a compact rollout
+  animation (`rollout.gif`) alongside the PNG frames.
+
+### Primes/divisibility benchmark (`newtest/primes_krr.py`)
+
+* Evaluates p-adic-aligned tasks (divisibility indicators and v_p valuation)
+  using dashifine vs periodic RBF kernels on 2D residue/phase embeddings.
+* Logs MSE per task and saves summary plots plus a run summary text file.
+* This benchmark is aligned with the p-adic divisibility framing in
+  `CONTEXT.md:4018` through `CONTEXT.md:4038`.
+* When interpreting results, note that Euclidean MSE rewards smoothing of
+  valuation spikes; dashifine may preserve hierarchical structure while showing
+  higher MSE. The interpretation guidance in `CONTEXT.md:4399` through
+  `CONTEXT.md:4562` captures this distinction and motivates valuation-level
+  indicator targets.
+* Valuation-level indicators (`1[p^k|n]`) are logged separately to align loss
+  with the hierarchical structure of p-adic valuations.
 
 ### Working directories and generated files
 
@@ -71,11 +179,13 @@ slices, and a `summary.json` file to `/mnt/data`. See
 dashifine/
 ├── dashifine/                # Importable package used by unit tests
 │   ├── Main_with_rotation.py # CLI stub that mirrors the public API
+│   ├── kernels.py            # PSD kernels for KRR/GP-style experiments
 │   └── palette.py            # Utility functions for lineage and class palettes
 ├── demo.py                   # Full end-to-end pipeline showcased in the README
 ├── demo_rgba*.py             # Variations that experiment with different colour
 │                              # treatments; handy for prototyping
 ├── examples/README.md        # Describes the sample outputs generated by demos
+├── newtest/wave_krr.py        # Wave-field completion via kernel ridge regression
 ├── tests/                    # Pytest-based regression and palette coverage
 ├── requirements.txt          # Minimal dependency set (NumPy, SciPy, Matplotlib)
 └── README.md                 # This document
@@ -139,6 +249,7 @@ by the unit tests. Feel free to import them in your own experiments.
 | <img   alt="Figure_112" src="https://github.com/user-attachments/assets/cf042708-1627-461f-b291-03cc1a87591f" /> | <img   alt="Figure_113" src="https://github.com/user-attachments/assets/cbd5469e-8daf-4a8c-9f33-a8dd31db4f49" /> | <img   alt="Figure_114" src="https://github.com/user-attachments/assets/118259dc-d9cd-4e19-b0d3-0453552a1694" /> | 
 | <img   alt="Figure_116" src="https://github.com/user-attachments/assets/48fdfa9a-fd73-4c8f-99d0-8b5b53be8cdd" /> | <img   alt="Figure_117" src="https://github.com/user-attachments/assets/3c169fc8-53b1-4942-9b85-7893c008bbf8" /> | <img   alt="Figure_118" src="https://github.com/user-attachments/assets/def9ef25-6efa-4886-a44d-7d4a6a137822" /> | 
 | <img   alt="Figure_119" src="https://github.com/user-attachments/assets/6c9f0edf-1759-4eaf-8081-0836a41e6bb6" /> | <img   alt="Figure_sd119" src="https://github.com/user-attachments/assets/cc53cdc0-62b0-4727-abd6-04055372823b" /> | <img   alt="Figure_1gfsd19" src="https://github-production-user-asset-6210df.s3.amazonaws.com/26853614/508785602-cc53cdc0-62b0-4727-abd6-04055372823b.webm?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20251107%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251107T034522Z&X-Amz-Expires=300&X-Amz-Signature=608873949321b2cbabb47330e231d4ac2623ede7348268ff16b1972d4ebad0a1&X-Amz-SignedHeaders=host" /> |
+| pytest1.py / pytest2.py (interference + energy surface) | pytest1.py / pytest2.py (interference + energy surface) | pytest2.py (animation) |
 | <img   alt="overlay_decoherence" src="https://github.com/user-attachments/assets/729ec564-5ac9-40f1-8910-31e1052e658c" /> | <img   alt="heatmap_k_sigma" src="https://github.com/user-attachments/assets/3b9d38fe-1587-451a-b029-880d99206542" /> | 
 <img   alt="heatmap_k_pround" src="https://github.com/user-attachments/assets/a8aea35b-cf69-4e79-83bc-e204393be4f6" /> |
 | <img   alt="cross_moduli_sigma" src="https://github.com/user-attachments/assets/3c75a118-e5d8-47e7-bcc6-d67861060c32" /> | 
