@@ -205,3 +205,24 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Generated artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+build/
+target/
+*.swp
+*.kate-swp
+.DS_Store
+
+# Chat history / local DBs
+chat*_history*.sqlite*
+chatgpt_history*.sqlite*
+codex_history*.sqlite*
+*chat_history*.sqlite*
+chatgpt_history*.sqlite*-wal
+chatgpt_history*.sqlite*-shm
+codex_history*.sqlite*-wal
+codex_history*.sqlite*-shm
