@@ -115,6 +115,24 @@ expectation. The spectral diagnostic prompt is also noted in `CONTEXT.md:1696`.
 Benchmark scripts now create timestamped subdirectories under `--output_dir`,
 so outputs are never overwritten by default.
 
+### Grokking trajectory experiments
+
+The repository now includes checkpointed grokking onset scans and a first-pass
+analysis pipeline:
+
+* `26_grok_critical_scan.py` for the coarse near-critical band
+* `26_grok_critical_scan_refine.py` for the lower-`weight_decay` refinement band
+* `26_grok_trajectory_analysis.py` for milestone extraction, onset-fit screens,
+  and normalized trajectory overlays
+
+The current reduced-model interpretation and theorem target are summarized in
+[`GROKKING_TIME_RESCALING_NOTE.md`](GROKKING_TIME_RESCALING_NOTE.md).
+The current 7-point dataset now supports a cleaner rise-phase law than the
+earlier Gompertz screen: after shifting by a shared normalized onset
+`t0 ≈ 0.81 * t50`, the post-escape rise is well fit by one shared logistic
+curve. The Gompertz upgrade is still not supported; the shared-onset logistic
+law is the strongest current shape result.
+
 The Phase-2 operator-learning priority (reaction–diffusion / Gray–Scott) is
 outlined in `CONTEXT.md:3021`.
 

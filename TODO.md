@@ -28,6 +28,53 @@
     - Overlay normalized trajectories using `epoch / t50` and `epoch / t95`.
     - Prefer `test_loss` as the smooth proxy for theorem-oriented work; defer extra metrics (margin, norm ratios, MDL proxy) until the coarse shape is confirmed.
     - Package the above into a reusable analysis script so later scans can be compared without ad hoc shell work.
+  - Added lower-band refinement scan:
+    - `26_grok_critical_scan_refine.py`
+    - separate outputs: `2_grok_critical_scan_refine.csv`, `2_grok_critical_scan_refine_trajectories.csv`
+    - `wd=0.20`: `t95=30780`, `final_test_acc≈0.9526`
+    - `wd=0.22`: `t95=28400`, `final_test_acc≈0.9519`
+    - `wd=0.24`: `t95=25900`, `final_test_acc≈0.9535`
+  - Combined-analysis readout:
+    - `26_grok_trajectory_analysis.py` run over coarse + refinement data prefers `t95 ~ 1 / wd` (`R²≈0.9976`) over the other simple 2-parameter screens.
+    - normalized collapse remains stronger under `epoch / t50` than `epoch / t95`.
+  - Current interpretation:
+    - best current dynamical reading is a two-timescale coarse model: fast memorization followed by slower regularization-controlled descent toward generalization.
+    - this is an interpretation supported by the 7-point dataset, not yet a theorem.
+    - a sharper mechanistic reading now worth testing is deterministic metastable escape from a memorization regime, followed by a sigmoid-like post-escape rise.
+  - Documentation status:
+    - added `GROKKING_TIME_RESCALING_NOTE.md` as the compact reduced-model note and theorem target for the current dataset.
+  - Next theorem-oriented tasks:
+    - identify one smoother hidden variable to track in future runs (margin proxy, norm ratio, effective rank, or MDL/compression proxy).
+    - test whether the chosen smooth proxy is approximately monotone in the late phase.
+    - refine the theorem note once a smooth proxy is selected, replacing raw test accuracy by the proxy in the formal statement while keeping test accuracy as the empirical observable.
+    - test whether the same time-rescaled family survives a second architecture or optimizer before making any portability/universality claim.
+    - test whether the data support deterministic slow escape more strongly than stochastic barrier-hopping by comparing the observed `1 / λ` timing trend against alternative escape-time scalings.
+  - Next shape-law task:
+    - fit the normalized `test_acc` trajectories to a Gompertz candidate `F(x)=exp(-a exp(-b x))`.
+    - check whether shared `a,b` with run-specific `t50` scaling still explains the observed collapse.
+    - compare Gompertz against at least a simple logistic baseline before treating the shape law as stable.
+  - Shape-law status:
+    - the first shared-parameter screen on normalized test accuracy favored the simple logistic baseline over the shared Gompertz candidate.
+    - therefore the current claim remains “common time-rescaled family,” not “Gompertz law.”
+  - Next shape-law tasks:
+    - repeat the shape-law comparison on the smoother normalized `test_loss` curves, not only on accuracy.
+    - relax the candidate family comparison beyond just Gompertz vs logistic if needed (for example, Gompertz/logistic hybrids or other skewed S-curves).
+    - completed: fit the rising phase only, with an explicit time shift `t0(λ)=t10(λ)`, to test whether a shared logistic-like post-escape law is more stable than a full-trajectory closed-form fit.
+    - rising-phase result: the shared post-`t10` logistic fit gave `mse≈0.00119`, supporting the current “metastable plateau + common sigmoid-like rise” interpretation.
+    - completed: repeat the rising-phase fit on normalized post-`t10` `test_loss` progress.
+    - loss-side result: the normalized test-loss progress fit gave `mse≈0.00197`, which is worse than the accuracy-side rising fit.
+    - completed: test a fitted onset shift `t0` rather than fixing `t0=t10`.
+    - fitted-onset result: the shared post-escape logistic fit improved to `mse≈0.000351`, versus `mse≈0.00119` with the fixed `t10` shift.
+    - the learned onset shifts are nearly constant across runs in normalized units (`t0 / t50 ≈ 0.81`), which strengthens the common-curve-family reading.
+    - completed: compare fitted `t0` against simpler fixed shifts like `t20` or curvature-based onset.
+    - comparison result:
+      - fixed `t20` shift gives `mse≈0.000714`, better than fixed `t10` but clearly worse than fitted `t0`
+      - curvature onset gives `mse≈0.01474`, so the naive curvature proxy is not useful here
+    - completed: test whether a single fixed normalized onset near `0.81 * t50` captures most of the fitted-`t0` gain without per-run free offsets.
+    - shared-onset result: one shared onset `t0 = c * t50` with `c≈0.8055` gives `mse≈0.000360`, essentially matching the per-run fitted-onset fit (`mse≈0.000351`).
+    - completed: fold this into the theorem note as the cleanest current empirical law for the rise phase.
+    - current flagship empirical law: after time rescaling by `t50`, onset occurs near a shared normalized location `t0≈0.81 * t50`, and the post-escape rise is well fit by one shared logistic curve.
+    - next: test whether the shared-onset logistic law survives a second architecture, optimizer, or related task.
 
 - Test log (2026-02-26):
   - Data acquisition / prep:

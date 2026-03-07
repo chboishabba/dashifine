@@ -26,10 +26,26 @@ Documenting this separation clarifies that feature work would need to route futu
   - uses conservative early stopping only after 5 logged checkpoints in a row satisfy `test_acc >= 0.95`
   - is currently configured for a coarse onset scan over `weight_decay ∈ {0.25, 0.30, 0.35, 0.40}` with `seed=0` and no cross-prime runs
 - **`26_grok_trajectory_analysis.py`** consumes the checkpointed grokking CSVs and produces first-pass analysis artifacts for curve-family inspection:
+  - accepts one or more summary CSVs plus one or more trajectory CSVs so coarse and refinement scans can be analyzed together
   - milestone table (`t10`, `t20`, `t50`, `t80`, `t90`, `t95`) by `(p, weight_decay, seed)`
   - simple onset-fit screening table for `t95(weight_decay)`
   - raw trajectory overlays for `test_acc` and `test_loss`
   - normalized `test_acc` overlays using `epoch / t50` and `epoch / t95`
+  - Gompertz shape-screening on normalized trajectories, including a shared-parameter fit summary and overlay plot
+  - current result: on the 7-point dataset, the simple logistic baseline outperforms the shared-parameter Gompertz candidate on normalized test accuracy, so the shape law remains open
+  - rising-phase-only logistic screening with a per-run onset shift, intended to test the “metastable plateau + shared post-escape rise” hypothesis more directly
+  - current result: using a shared logistic rise on the post-`t10` segment with per-run onset shift gives `mse≈0.00119`, which is consistent with a shared sigmoid-like post-escape rise after the delayed plateau
+  - rising-phase-only logistic screening on normalized post-`t10` test-loss progress
+  - current loss-side result: normalized test-loss progress fits worse than accuracy (`mse≈0.00197`), so `test_acc` remains the cleaner empirical screen for the shared post-escape rise
+  - fitted-onset logistic screening, which learns a separate onset shift for each run while sharing the post-escape logistic shape
+  - current fitted-onset result: the shared logistic rise with learned onset shifts gives `mse≈0.000351`, materially better than the fixed-`t10` rise fit and essentially matching the best full normalized logistic baseline
+  - lower-complexity onset comparisons:
+    - fixed `t20` shift improves over fixed `t10` (`mse≈0.000714`) but does not match the fitted-onset screen
+    - curvature-based onset performs poorly on the current dataset (`mse≈0.01474`)
+  - shared normalized-onset screening:
+    - a single shared onset `t0 = c * t50` with learned `c≈0.8055` gives `mse≈0.000360`
+    - this is nearly identical to the per-run fitted-onset result (`mse≈0.000351`), so the onset alignment can be simplified without materially weakening the fit
+- **`26_grok_critical_scan_refine.py`** is the lower-`weight_decay` follow-up runner. It mirrors the checkpoint/early-stop behavior of the main critical scan but uses a longer epoch budget and writes separate refinement outputs so the lower band can be tested without overwriting the coarse scan.
 - **`26_grok_sweep.py`**, **`26_grok_sweep_2.py`**, **`26_grok_sweep_clean.py`**, and **`26_grok_sweep_adaptive.py`** remain useful for broader parameter sweeps, but they primarily save onset summaries rather than the full trajectories now required for curve-shape analysis.
 
 ## Automated tests in `tests/`

@@ -93,3 +93,51 @@
   - Outputs milestone table `grok_milestones.csv`
   - Outputs onset-fit screening table `grok_onset_fit_screen.csv`
   - Outputs raw and normalized overlay plots for `test_acc` and raw `test_loss`
+  - Now accepts multiple coarse/refinement summary and trajectory CSVs so the lower-`wd` refinement band can be analyzed jointly with the coarse scan
+  - Now also outputs a normalized shape-law comparison:
+    - `grok_gompertz_fit.csv`
+    - `grok_gompertz_norm_t50.png`
+  - The shape-law screen compares a shared-parameter Gompertz candidate against a simple logistic baseline on the `epoch / t50` normalized curves
+- Added `26_grok_critical_scan_refine.py` for the lower-`wd` follow-up band with a longer epoch budget and separate output files.
+- Lower-band refinement results (`p=97`, `seed=0`):
+  - `wd=0.20`: `t95=30780`, `final_test_acc≈0.9526`, `final_test_loss≈0.1508`
+  - `wd=0.22`: `t95=28400`, `final_test_acc≈0.9519`, `final_test_loss≈0.1642`
+  - `wd=0.24`: `t95=25900`, `final_test_acc≈0.9535`, `final_test_loss≈0.1600`
+- Combined 7-point onset dataset (`wd ∈ {0.20, 0.22, 0.24, 0.25, 0.30, 0.35, 0.40}`):
+  - `t95` decreases monotonically with `weight_decay`
+  - final test accuracy stays near-constant (~0.952 to ~0.956)
+  - `26_grok_trajectory_analysis.py` run on the combined dataset yields:
+    - best simple onset screen: `t95 ~ 1 / wd` with `R²≈0.9976`
+    - next best simple screen: `log t95 ~ 1 / wd` with `R²≈0.9961`
+    - better trajectory collapse under `epoch / t50` than `epoch / t95`
+- Current best empirical interpretation of the grokking data:
+  - one common delayed-generalization curve family across the tested `weight_decay` band
+  - a fast memorization phase followed by a slower delayed-generalization phase
+  - `weight_decay` acts primarily as a time-rescaling parameter for the slow phase
+  - a more specific current mechanistic hypothesis is deterministic metastable escape from a memorization regime, followed by a sigmoid-like post-escape rise
+- Current shape-law status:
+  - the first shared-parameter normalized-accuracy screen did not support upgrading the claim to a Gompertz law
+  - on the present 7-point dataset, the simple logistic baseline fit better than the shared Gompertz candidate
+  - the stronger current claim remains the time-rescaled family / fast-slow interpretation, not a fixed closed-form rise law
+  - the best current shape-language is “sigmoid-like post-escape rise” rather than a settled Gompertz law
+  - a stricter rising-phase-only screen was then added: fit a shared logistic rise on the post-`t10` segment with a per-run onset shift
+  - that rising-phase fit achieved `mse≈0.00119`, which is consistent with the “metastable delayed plateau + shared sigmoid-like post-escape rise” picture
+  - because it is evaluated on the shifted post-onset segment, it should be read as support for the post-escape law rather than as a direct replacement for the full-trajectory screens
+  - the same post-`t10` logistic screen was repeated on normalized test-loss progress and achieved `mse≈0.00197`
+  - on the present 7-point dataset, the loss-side proxy does not tighten the shared post-escape law; the accuracy-side rise fit is cleaner
+  - replacing the fixed `t10` shift with a fitted per-run onset shift materially improved the shared post-escape logistic fit to `mse≈0.000351`
+  - the learned onset shifts are nearly constant in normalized units (`t0 / t50 ≈ 0.81` across all seven runs), which suggests the onset location itself may also be part of the shared curve family
+  - this is the strongest current shape result: once onset is aligned, the post-escape rise is very well described by a shared logistic law
+  - lower-complexity onset tests were then compared against the fitted-`t0` benchmark:
+    - fixed `t20` shift improved to `mse≈0.000714`, so it captures part but not all of the onset-alignment gain
+    - naive curvature onset performed poorly (`mse≈0.01474`) and is not a good onset proxy on the present dataset
+  - the natural next simplification test was then run: a single shared normalized onset location near `0.81 * t50`
+  - one shared onset `t0 = c * t50` with `c≈0.8055` achieved `mse≈0.000360`, nearly identical to the per-run fitted-onset fit (`mse≈0.000351`)
+  - this is the cleanest current rise-phase law: after shifting by a shared normalized onset near `0.81 * t50`, the post-escape rise is very well described by a shared logistic curve
+- Current theorem target / reduced-model conjecture:
+  - near-critical grokking admits a coarse fast-slow description with a one-dimensional slow variable controlling late generalization
+  - empirical template: `G(t; λ) ≈ F((t - T_mem) / τ(λ))`
+  - flagship conjecture: regularization primarily rescales the clock of a common delayed-generalization flow rather than changing the trajectory family
+- Added `GROKKING_TIME_RESCALING_NOTE.md` as the compact theorem-note draft for the current grokking result.
+  - It states the empirical observation, reduced-model conjecture, minimal assumptions, candidate theorem target, inverse-law threshold-time target, and limitation statement in one place.
+  - The note deliberately treats the fast-slow / Lyapunov-style interpretation as a supported conjecture rather than an established theorem.
