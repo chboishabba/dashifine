@@ -1,6 +1,20 @@
+"""
+Critical-window grokking scan for modular multiplication.
+
+This runner is used for onset mapping near the grokking transition.
+It writes:
+  - `grok_critical_scan.csv` with one row per completed run
+  - `grok_critical_scan_trajectories.csv` with per-epoch train/test metrics
+
+Runs are checkpointed after each completed `(p, weight_decay, seed)` tuple so
+the scan can be resumed safely. A run stops early only after the test accuracy
+has remained above the grok threshold for several logged checkpoints.
+"""
+
 import math
 import random
 import csv
+from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
@@ -27,6 +41,12 @@ class ModMLP(nn.Module):
 def eval_acc(model, x, y):
     model.eval()
     return (model(x).argmax(-1) == y).float().mean().item()
+
+
+@torch.no_grad()
+def eval_loss(model, x, y):
+    model.eval()
+    return float(F.cross_entropy(model(x), y).item())
 
 def first_epoch_at_or_none(epochs_logged, values, thr):
     for e, v in zip(epochs_logged, values):
@@ -61,6 +81,10 @@ def run_one(seed, weight_decay, p, train_frac, epochs, log_every, lr, d, h):
     epochs_logged = []
     train_acc_log = []
     test_acc_log  = []
+    train_loss_log = []
+    test_loss_log = []
+    grok_patience_logs = 5
+    grok_thr = 0.95
 
     for ep in range(1, epochs + 1):
         model.train()
@@ -70,16 +94,27 @@ def run_one(seed, weight_decay, p, train_frac, epochs, log_every, lr, d, h):
         opt.step()
 
         if ep == 1 or ep % log_every == 0:
+            tr_loss = eval_loss(model, Xtr, ytr)
+            te_loss = eval_loss(model, Xte, yte)
             tr_acc = eval_acc(model, Xtr, ytr)
             te_acc = eval_acc(model, Xte, yte)
             epochs_logged.append(ep)
+            train_loss_log.append(tr_loss)
+            test_loss_log.append(te_loss)
             train_acc_log.append(tr_acc)
             test_acc_log.append(te_acc)
+
+            # Conservative early stop: only stop once test accuracy has
+            # remained above threshold for several logged evaluations.
+            if len(test_acc_log) >= grok_patience_logs:
+                tail = test_acc_log[-grok_patience_logs:]
+                if min(tail) >= grok_thr:
+                    break
 
     t_fit = first_epoch_at_or_none(epochs_logged, train_acc_log, 0.99)
     t95   = first_epoch_at_or_none(epochs_logged, test_acc_log, 0.95)
 
-    return {
+    summary = {
         "p": p,
         "seed": seed,
         "weight_decay": float(weight_decay),
@@ -90,9 +125,26 @@ def run_one(seed, weight_decay, p, train_frac, epochs, log_every, lr, d, h):
         "h": h,
         "t_fit": t_fit,
         "t95": t95,
+        "final_train_loss": train_loss_log[-1],
+        "final_test_loss": test_loss_log[-1],
         "final_train_acc": train_acc_log[-1],
         "final_test_acc":  test_acc_log[-1],
     }
+    trajectory = []
+    for ep, tr_loss, te_loss, tr_acc, te_acc in zip(
+        epochs_logged, train_loss_log, test_loss_log, train_acc_log, test_acc_log
+    ):
+        trajectory.append({
+            "p": p,
+            "seed": seed,
+            "weight_decay": float(weight_decay),
+            "epoch": ep,
+            "train_loss": tr_loss,
+            "test_loss": te_loss,
+            "train_acc": tr_acc,
+            "test_acc": te_acc,
+        })
+    return summary, trajectory
 
 def main():
     # Shared hyperparams (keep fixed for comparability)
@@ -104,38 +156,92 @@ def main():
     # ---- Critical scan for p=97 ----
     p_main = 97
     epochs_main = 30000
-    seeds_main = list(range(10))
-    wds_main = [0.38, 0.40, 0.42, 0.44, 0.46, 0.48, 0.50, 0.52, 0.54, 0.56, 0.60]
+    seeds_main = [0]
+    wds_main = [0.25, 0.30, 0.35, 0.40]
 
     # ---- Cross-prime sanity ----
-    primes_extra = [47, 193]
+    primes_extra = []
     epochs_extra = 20000
     seeds_extra = list(range(5))
     wds_extra = [0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70]
 
-    rows = []
+    out = Path("grok_critical_scan.csv")
+    traj_out = Path("grok_critical_scan_trajectories.csv")
+
+    completed = set()
+    if out.exists():
+        with out.open("r", newline="") as f:
+            for row in csv.DictReader(f):
+                completed.add((int(row["p"]), float(row["weight_decay"]), int(row["seed"])))
+
+    summary_fields = [
+        "p",
+        "seed",
+        "weight_decay",
+        "epochs",
+        "train_frac",
+        "lr",
+        "d",
+        "h",
+        "t_fit",
+        "t95",
+        "final_train_loss",
+        "final_test_loss",
+        "final_train_acc",
+        "final_test_acc",
+    ]
+    traj_fields = [
+        "p",
+        "seed",
+        "weight_decay",
+        "epoch",
+        "train_loss",
+        "test_loss",
+        "train_acc",
+        "test_acc",
+    ]
+
+    if not out.exists():
+        with out.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=summary_fields)
+            w.writeheader()
+    if not traj_out.exists():
+        with traj_out.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=traj_fields)
+            w.writeheader()
+
+    def persist(summary, traj):
+        with out.open("a", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=summary_fields)
+            w.writerow(summary)
+        with traj_out.open("a", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=traj_fields)
+            w.writerows(traj)
 
     print("\n=== Critical scan p=97 ===\n")
     for wd in wds_main:
         for seed in seeds_main:
-            r = run_one(seed, wd, p_main, train_frac, epochs_main, log_every, lr, d, h)
-            rows.append(r)
+            key = (p_main, float(wd), seed)
+            if key in completed:
+                print(f"p={p_main} wd={wd:<4} seed={seed:<2} already done, skipping")
+                continue
+            r, traj = run_one(seed, wd, p_main, train_frac, epochs_main, log_every, lr, d, h)
+            persist(r, traj)
             print(f"p={p_main} wd={wd:<4} seed={seed:<2} t95={r['t95']} final_test={r['final_test_acc']:.3f}")
 
     for p in primes_extra:
         print(f"\n=== Cross-prime scan p={p} ===\n")
         for wd in wds_extra:
             for seed in seeds_extra:
-                r = run_one(seed, wd, p, train_frac, epochs_extra, log_every, lr, d, h)
-                rows.append(r)
+                key = (p, float(wd), seed)
+                if key in completed:
+                    print(f"p={p} wd={wd:<4} seed={seed:<2} already done, skipping")
+                    continue
+                r, traj = run_one(seed, wd, p, train_frac, epochs_extra, log_every, lr, d, h)
+                persist(r, traj)
                 print(f"p={p} wd={wd:<4} seed={seed:<2} t95={r['t95']} final_test={r['final_test_acc']:.3f}")
-
-    out = "grok_critical_scan.csv"
-    with open(out, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=rows[0].keys())
-        w.writeheader()
-        w.writerows(rows)
     print(f"\nSaved: {out}")
+    print(f"Saved: {traj_out}")
 
 if __name__ == "__main__":
     main()

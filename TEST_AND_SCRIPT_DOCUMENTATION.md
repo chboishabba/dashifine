@@ -18,6 +18,20 @@ Documenting this separation clarifies that feature work would need to route futu
 - **`pytest5.py`** computes alignment strength (# of moduli dividing each integer), saves results to CSV, optionally plots smoothed/decimated curves, and prints top alignment points. 【F:pytest5.py†L1-L58】
 - **`pytest6.py`** overlays alignment-strength curves for multiple modulus ranges, with normalization, smoothing/decimation, optional LCM markers, and plot saving. 【F:pytest6.py†L1-L93】
 
+## Grokking scan scripts
+- **`26_grok_critical_scan.py`** runs a critical-window grokking scan on the mod-multiplication task (`p=97` in the current configuration), logging per-run summaries and per-epoch trajectories. The current workflow:
+  - writes `grok_critical_scan.csv` with `t_fit`, `t95`, final train/test loss, and final train/test accuracy
+  - writes `grok_critical_scan_trajectories.csv` with per-epoch `train_loss`, `test_loss`, `train_acc`, and `test_acc`
+  - resumes safely by skipping completed `(p, weight_decay, seed)` tuples already in the summary CSV
+  - uses conservative early stopping only after 5 logged checkpoints in a row satisfy `test_acc >= 0.95`
+  - is currently configured for a coarse onset scan over `weight_decay ∈ {0.25, 0.30, 0.35, 0.40}` with `seed=0` and no cross-prime runs
+- **`26_grok_trajectory_analysis.py`** consumes the checkpointed grokking CSVs and produces first-pass analysis artifacts for curve-family inspection:
+  - milestone table (`t10`, `t20`, `t50`, `t80`, `t90`, `t95`) by `(p, weight_decay, seed)`
+  - simple onset-fit screening table for `t95(weight_decay)`
+  - raw trajectory overlays for `test_acc` and `test_loss`
+  - normalized `test_acc` overlays using `epoch / t50` and `epoch / t95`
+- **`26_grok_sweep.py`**, **`26_grok_sweep_2.py`**, **`26_grok_sweep_clean.py`**, and **`26_grok_sweep_adaptive.py`** remain useful for broader parameter sweeps, but they primarily save onset summaries rather than the full trajectories now required for curve-shape analysis.
+
 ## Automated tests in `tests/`
 - **`tests/test_primitives.py`** validates numerical helpers in `dashifine.Main_with_rotation`: GELU oddness, orthonormalization, 4D/3D rotations, p-adic palette mapping, and class-weight to RGBA blending. 【F:tests/test_primitives.py†L1-L82】
 - **`tests/test_integration.py`** runs `main` with tiny grids to ensure artifact paths are created. 【F:tests/test_integration.py†L1-L19】
@@ -50,4 +64,3 @@ Documenting this separation clarifies that feature work would need to route futu
 - **Legacy line pairing**: `runner_element_lines_0.py` enumerates transitions from levels; `runner_element_lines_1.py` pairs lines for combined analysis. 【F:newtest/runner_element_lines_0.py†L1-L47】【F:newtest/runner_element_lines_1.py†L1-L51】
 - **Composite/modulus utilities**: `motifs9.py`, `runner_mixed_modulus.py`, and `runner_composite_moduli.py` explore composite-modulus spectra and motif aggregation; `map_27_to_H3x3.py` supports coarse mapping. 【F:newtest/motifs9.py†L1-L62】【F:newtest/runner_mixed_modulus.py†L1-L58】【F:newtest/runner_composite_moduli.py†L1-L162】【F:newtest/map_27_to_H3x3.py†L1-L28】
 - **Miscellaneous**: `runner_cross_moduli_compare.py` contrasts cross-moduli outputs; `runner_overlay_decoherence.py` overlays decoherence channels; `runner_decoherence_heatmap.py` builds CHSH heatmaps; `runner_lattice_chsh.py` runs lattice CHSH demos; `runner_chsh_experiments.py` and `runner_ternary_chsh.py` provide additional experiment drivers. 【F:newtest/runner_cross_moduli_compare.py†L1-L149】【F:newtest/runner_overlay_decoherence.py†L1-L140】【F:newtest/runner_decoherence_heatmap.py†L1-L116】【F:newtest/runner_lattice_chsh.py†L1-L49】【F:newtest/runner_chsh_experiments.py†L1-L46】【F:newtest/runner_ternary_chsh.py†L1-L20】
-

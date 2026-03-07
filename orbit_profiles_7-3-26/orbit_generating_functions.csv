@@ -1,0 +1,8 @@
+signature,p,q,ambient_dim,shell_point_total,orbit_total,shell_point_poly,orbit_count_poly,shell_1_points,shell_1_orbits,shell_2_points,shell_2_orbits
+p1_q2,1,2,3,18,4,14x + 4x^2,3x + 1x^2,14,3,4,1
+p2_q1,2,1,3,18,4,14x + 4x^2,3x + 1x^2,14,3,4,1
+p3_q1,3,1,4,60,5,32x + 28x^2,3x + 2x^2,32,3,28,2
+p4_q0,4,0,4,32,2,8x + 24x^2,1x + 1x^2,8,1,24,1
+p2_q2,2,2,4,48,6,40x + 8x^2,4x + 2x^2,40,4,8,2
+p1_q3,1,3,4,60,5,32x + 28x^2,3x + 2x^2,32,3,28,2
+p0_q4,0,4,4,32,2,8x + 24x^2,1x + 1x^2,8,1,24,1

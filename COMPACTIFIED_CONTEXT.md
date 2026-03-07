@@ -61,4 +61,35 @@
 - ptll_76_106_table forward r* list: r1=0.2034379 (8→9), r2=0.2099217 (7→8), r3=0.2203354 (9→10), r4=0.2249192 (10→11); gap ratio r2/r1 ≈ 1.0319. Outputs: `ptll_76_106_table_r_star_forward.csv`, `ptll_76_106_table_r_star_forward.png`.
 - Whitening comparison: diag-whitened r* cluster persists with scaled values (~0.0276..0.0306); full-whitened cluster persists (~0.0847..0.1136) with ordering slightly changed. Output: `ptll_76_106_table_r_star_forward_whiten.csv`.
 - Canonical normalization (full-whitened, MDL fallback q=1/3, bidirectional): using Q_p99=0 implies s = quantile_0.01(sn/sp)=0.0887006687; overall min/mean 0.875/0.9904; holdout (exclude ptll) min/mean 1.0. Outputs: `full_whiten_qpin_summary_fixed.csv`, `full_whiten_qpin_per_label_fixed.csv`.
-- MDL-based forward sweep (E_MDL_proxy, fallback -log1p chi2_dof) yields interval [0.10, 0.20]; pinned by ptll_76_106_table and ttbar_mtt_8tev_cms.
+  - MDL-based forward sweep (E_MDL_proxy, fallback -log1p chi2_dof) yields interval [0.10, 0.20]; pinned by ptll_76_106_table and ttbar_mtt_8tev_cms.
+
+## 2026-03-07
+
+- Grokking critical scan workflow narrowed to the `p=97` mod-multiplication task only; cross-prime sanity runs were disabled to focus on curve shape near onset.
+- `26_grok_critical_scan.py` now writes checkpointed outputs after each completed run:
+  - `grok_critical_scan.csv` for per-run summaries
+  - `grok_critical_scan_trajectories.csv` for per-epoch train/test loss and accuracy
+- The grokking scan now resumes by skipping completed `(p, weight_decay, seed)` tuples already present in `grok_critical_scan.csv`.
+- Conservative early stopping was added to the grokking scan: a run stops only after 5 logged checkpoints in a row with `test_acc >= 0.95`.
+- Current coarse scan configuration for onset mapping:
+  - `seeds_main = [0]`
+  - `wds_main = [0.25, 0.30, 0.35, 0.40]`
+  - `primes_extra = []`
+- Completed grokking runs so far (`p=97`, `seed=0`):
+  - `wd=0.25`: `t_fit=80`, `t95=24980`, `final_test_acc≈0.9537`, `final_test_loss≈0.1589`
+  - `wd=0.30`: `t_fit=80`, `t95=21760`, `final_test_acc≈0.9545`, `final_test_loss≈0.1519`
+  - `wd=0.35`: `t_fit=80`, `t95=19500`, `final_test_acc≈0.9545`, `final_test_loss≈0.1478`
+- Trajectory interpretation from the completed grokking runs:
+  - train memorization saturates by ~epoch 80
+  - test accuracy remains near chance at epoch 80
+  - a long flat/chance plateau is followed by a late rapid generalization phase
+  - increasing `weight_decay` shifts the onset earlier without materially changing the final thresholded accuracy in the completed cases
+- Immediate analysis plan for grokking:
+  - finish the coarse `wd` grid
+  - fit onset times (`t50`, `t80`, `t90`, `t95`) against `weight_decay`
+  - overlay normalized trajectories, especially by `epoch / t50` and `epoch / t95`
+  - prefer smooth proxies like `test_loss` over raw accuracy for theorem-oriented follow-up
+- Added `26_grok_trajectory_analysis.py` to automate the first-pass grokking analysis from checkpointed CSVs.
+  - Outputs milestone table `grok_milestones.csv`
+  - Outputs onset-fit screening table `grok_onset_fit_screen.csv`
+  - Outputs raw and normalized overlay plots for `test_acc` and raw `test_loss`

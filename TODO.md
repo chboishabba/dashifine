@@ -1,5 +1,34 @@
 # TODO (Dashifine / HEPData cone screen)
 
+- Grokking scan log (2026-03-07):
+  - Workflow changes:
+    - `26_grok_critical_scan.py` now checkpoints each completed run to `grok_critical_scan.csv` and `grok_critical_scan_trajectories.csv`.
+    - Added per-epoch logging of `train_loss`, `test_loss`, `train_acc`, and `test_acc`.
+    - Added resume/skip behavior for completed `(p, weight_decay, seed)` tuples.
+    - Added conservative early stopping after 5 logged checkpoints with `test_acc >= 0.95`.
+  - Current onset-mapping configuration:
+    - `p_main = 97`
+    - `seeds_main = [0]`
+    - `wds_main = [0.25, 0.30, 0.35, 0.40]`
+    - `primes_extra = []`
+  - Completed runs so far:
+    - `wd=0.25`: `t_fit=80`, `t95=24980`, `final_test_acc≈0.9537`, `final_test_loss≈0.1589`.
+    - `wd=0.30`: `t_fit=80`, `t95=21760`, `final_test_acc≈0.9545`, `final_test_loss≈0.1519`.
+    - `wd=0.35`: `t_fit=80`, `t95=19500`, `final_test_acc≈0.9545`, `final_test_loss≈0.1478`.
+  - Interpretation so far:
+    - all completed runs show fast memorization (`t_fit=80`) plus a long delayed-generalization plateau.
+    - increasing `weight_decay` shifts onset earlier (`t95: 24980 -> 21760 -> 19500`) while leaving final thresholded accuracy nearly unchanged.
+  - Next analysis tasks:
+    - Finish the coarse `wd` grid by capturing `wd=0.40`.
+    - Extract onset milestones `t10`, `t20`, `t50`, `t80`, `t90`, `t95` for each completed `wd`.
+    - Fit onset time against `weight_decay` using small-model screens:
+      - linear in `1 / wd`
+      - log-linear / barrier-like
+      - power-law in distance from a candidate critical `wd_c`
+    - Overlay normalized trajectories using `epoch / t50` and `epoch / t95`.
+    - Prefer `test_loss` as the smooth proxy for theorem-oriented work; defer extra metrics (margin, norm ratios, MDL proxy) until the coarse shape is confirmed.
+    - Package the above into a reusable analysis script so later scans can be compared without ad hoc shell work.
+
 - Test log (2026-02-26):
   - Data acquisition / prep:
     - Added HEPData table support for record ids (e.g., ins1663452) + table names, and for covariance headers "Matrix element".
