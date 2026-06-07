@@ -1,0 +1,6 @@
+pair,pearson
+R_mean_dash vs transition_weight_sum_tg,0.26949777665251384
+R_range_dash vs transition_weight_sum_tg,0.6240199689585151
+z_mean_dash vs transition_weight_sum_tg,-0.7517309741553296
+R_mean_dash vs R_mean_tg,1.0
+z_mean_dash vs z_mean_tg,1.0

@@ -1,0 +1,8 @@
+key,value
+transition_count,9
+weight_min,2
+weight_max,10
+weight_mean,4.555555555555555
+dR_sum,8
+dz_sum,8
+dstate_sum,16

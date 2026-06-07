@@ -1,5 +1,56 @@
 # TODO (Dashifine / HEPData cone screen)
 
+- Dashifine ↔ TextGraphs bridge follow-up (2026-03-24):
+  - Add one compact conformance artifact for the current bridge outputs so the A→I path, base graph props, weighted/window summaries, and current augmented rule can be rechecked without manual comparison.
+  - Extend the bridge scoring from simple global graph lift to window-aware semantic alignment:
+    - compare each non-local rule against Dashifine window behavior (`R_mean`, `R_range`, `z_mean`, `z_range`, phase mix),
+    - then rerank the rules using that semantic score instead of density/centrality lift alone.
+  - Reassess whether `ternary_l1_le_2` is really the best rule once semantic/window alignment is part of the objective.
+  - Keep the current artifacts as the frozen baseline:
+    - `textgraphs_graph_props.csv`
+    - `textgraphs_graph_props_augmented.csv`
+    - `textgraphs_variant_props.csv`
+    - `bridge_reference_snapshot.json`
+    - `bridge_variant_report.json`
+    - `bridge_correlation.csv`
+
+- Quantum-formalism bridge follow-up (2026-03-24):
+  - Inventory the current `newtest/` quantum-facing utilities by role:
+    - CHSH / Bell / measurement harnesses
+    - qutrit / ternary Hilbert embeddings
+    - SSH / lattice / wall-mode helpers
+    - `quantum_defect` demos and placeholders
+    - quarter-turn / `J`-based complex-structure utilities
+  - Write one compact repo note stating how those modules should feed the
+    `dashiQ` bridge/interface effort.
+  - Make the scope boundary explicit in docs:
+    - current work = classical, quantum-faithful simulation / lattice
+      realization
+    - not yet current work = quantum hardware execution / advantage claims
+  - Identify the smallest reusable interface shared with the Agda quantum
+    source split:
+    - state
+    - invertible step / unitary-like evolution
+    - measurement / projection
+    - observables
+    - optional continuous-time generator
+  - Include local-archive-backed notes for the canonical quantum threads:
+    - `P-adic quantum systems`
+    - `Quarter turn in quantum`
+    - `Math Prof Outreach Stage`
+
+- Chat archive sync follow-up (2026-03-09):
+  - Consolidate the four cone-monotonicity threads (`699dc65b...`, `699dc8f6...`, `699dd0b2...`, `699dd1e1...`) into one authoritative closure memo with fixed premise set, margin/eps policy, and branch-to-branch deltas.
+  - Turn `Architectural Closure Status` (`69984670...`) into an explicit checklist: what counts as closure already satisfied vs still missing in the current repo.
+  - Promote the wave/interference thread pair (`695c4632...`, `6993e106...`) into a reproducible benchmark note alongside the existing wave/Gray-Scott/primes benchmark docs.
+  - Add one compact note that bridges the concrete Python wave experiments in this repo to the broader archive-only wave-lift / even-subalgebra / graded-series language surfaced again in `Math Prof Outreach Stage` (`69aa52b4...`).
+  - Cross-reference `../DASHIg/FORMALISM_OUTLINE.md` and `../DASHIg/all_code44.txt` when writing that bridge note so we distinguish clearly between:
+    - concrete local Python experiments,
+    - sibling-repo Agda/module scaffolds,
+    - and still-open physics interpretations.
+  - Preserve the LES implementation branch (`69718c29...`, `6978944d...`, `697c3293...`) as a separate track from HEPData cone work; avoid mixing CPU/GPU parity tasks into the cone-screen CLI/reporting backlog.
+  - Leave clearly out-of-scope archive items archived but not actioned here: cannabis-law lookup, bra-ket history, generic security hardening, bodysuit/mesh tooling.
+
 - Grokking scan log (2026-03-07):
   - Workflow changes:
     - `26_grok_critical_scan.py` now checkpoints each completed run to `grok_critical_scan.csv` and `grok_critical_scan_trajectories.csv`.

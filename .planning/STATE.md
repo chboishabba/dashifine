@@ -12,9 +12,9 @@ See: .planning/PROJECT.md (updated 2026-02-26)
 Phase: 2 of 3 (Perturbation & Arrow Robustness)
 Plan: 1 of 1 in current phase
 Status: Ready to execute
-Last activity: 2026-02-26 — Implemented scale-robustness reporting script and updated docs.
+Last activity: 2026-03-09 — Synced archive-backed thread context into docs, TODOs, and planning notes.
 
-Progress: ▓▓▓░░░░░░░ 33%
+Progress: ▓▓▓▓▓░░░░░ 50%
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
 - Phase 1: Add a separate scale-robustness sweep script to avoid breaking existing CLIs.
+- 2026-03-09: Keep cone-closure follow-up, wave/interference demos, and LES parity as distinct lanes rather than collapsing them into one backlog.
 
 ### Deferred Issues
 
@@ -52,6 +53,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-26 16:40
-Stopped at: Scale-robustness reporting implemented; ready to run perturbation/arrow sweeps.
+Last session: 2026-03-09 00:20 AEST
+Stopped at: Archive-backed context sync completed; next execution step remains the perturbation/arrow robustness sweep lane.
 Resume file: None

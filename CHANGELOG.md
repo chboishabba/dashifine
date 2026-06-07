@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-03-23
+
+- Added the Dashifine ↔ TextGraphs Phase 1 bridge artifacts: `dashifine/bridge_emit.py`, `dashifine/bridge_textgraphs.jl`, `dashifine/dashifine_path_rows.csv`, `dashifine/dashifine_token_stream.txt`, and `dashifine/textgraphs_graph_props.csv`.
+- Defined the bridge contract in `BRIDGE_PLAN.md` and `COMPACTIFIED_CONTEXT.md`, including the canonical `LABEL:self,norm,mirror` serializer and the shared observables used for comparison.
+- Kept the Julia bridge reproducible by mirroring the minimal TextGraphs graph-construction/property subset locally, avoiding the full `TextGraphs.jl` package precompile path for Phase 1.
+- This establishes the first comparison artifact between Dashifine's ternary conversational trajectory and TextGraphs-style graph observables.
+- Added Phase 2 bridge artifacts: `dashifine/bridge_phase2.py`, `dashifine/bridge_phase2.json`, and `dashifine/bridge_phase2.csv`.
+- Phase 2 summarizes weighted `R`/`z` transition behavior and sliding-window drift over the same canonical path, making the bridge informative rather than only sequence-faithful.
+- Added the augmented/non-local graph entrypoint `dashifine/bridge_textgraphs_augmented.jl` and its output `dashifine/textgraphs_graph_props_augmented.csv`, confirming that similarity edges collapse the base 10-component chain into a single strongly connected graph.
+- Added the batched rule sweep `dashifine/bridge_textgraphs_sweep.jl` plus the summary/report artifacts `dashifine/textgraphs_variant_props.csv`, `dashifine/bridge_reference_snapshot.json`, `dashifine/bridge_variant_report.json`, and `dashifine/bridge_variant_report.csv`.
+- The current sweep-ranked rule is `ternary_l1_le_2`, which produced the strongest density/closeness/eigenvector lift from the baseline under the current simple complexity-penalized scoring rule.
+
+## 2026-03-24
+
+- Synced the bridge state back into `COMPACTIFIED_CONTEXT.md`, `BRIDGE_PLAN.md`, and `TODO.md` so the documented intent matches the current artifact set and selected-rule status.
+- Recorded the current interpretation explicitly: the bridge is correct and structurally informative, but the present rule ranking is still based on global graph lift and should be revisited once windowed semantic alignment is part of the score.
+- Synced repo-facing quantum scope notes into `README.md`, `COMPACTIFIED_CONTEXT.md`, and `TODO.md`: the `newtest/` CHSH / qutrit / SSH / quantum-defect utilities are now explicitly framed as classical, quantum-faithful simulation tools that should feed the `dashiQ` bridge/internalization effort rather than being described as quantum hardware execution.
+- Ran a local-DB context pass with the canonical archive and recorded the resolved thread metadata plus decisions for `P-adic quantum systems`, `Quarter turn in quantum`, and `Math Prof Outreach Stage`, tightening the repo wording around p-adic scope, the quarter-turn `J` seam, and wave-lift as an extension point rather than a finished closure claim.
+
+## 2026-03-09
+
+- Synced a user-supplied ChatGPT link set into the canonical archive at `~/chat_archive.sqlite`: 38 links collapsed to 37 unique online UUIDs, all now resolved with canonical thread IDs and titles.
+- Updated `COMPACTIFIED_CONTEXT.md` with the resolved chat registry plus the repo-facing themes recovered from the archive sync: cone monotonicity / closure, wave/interference kernel work, LES implementation parity, and the GR/MDL branch family.
+- Updated `TODO.md` so the archive-backed next actions are explicit: closure memo consolidation, architectural-closure checklisting, benchmark-note promotion for the wave/interference threads, and lane separation for LES vs HEPData cone work.
+- Refined planning docs so Phase 3 now includes archive/context consolidation rather than only post-run note capture.
+- Added a short README research-directions section reflecting the same archive-backed priorities without dumping raw thread IDs into the public-facing docs.
+- Resolved `Math Prof Outreach Stage` (`69aa52b4-6f7c-839f-aa7f-d120ffe0c1ad` / `decf9e3cde5ccdec0c51ad8aab15999201503998`) from the local archive, confirmed that `ψ` appears but plain `psi` is more common, and recorded that the thread sharpens the current reading: strong mathematical closure spine, but major dynamics/continuum/gauge/matter gaps remain open.
+- Added local archive notes mapping `Math Prof Outreach Stage` against earlier synced threads via `ARCHIVE_RANKED_THREADS_FOR_MATH_PROF_OUTREACH.md` and `MATH_PROF_OUTREACH_CROSSWALK.md`.
+- Consulted `../DASHIg` docs and code summaries and updated local notes to reflect that the broader DASHI formalism now has explicit sibling-repo scaffolds for `WaveLiftEvenSubalgebra`, B4 orbit-shell generating series, finite graded shell series, twined traces, Lorentz-neighborhood dynamics, and gauge-bridge / gauge-persistence exports, while keeping the distinction clear between scaffold presence and finished physics closure.
+
 ## 2026-03-07
 
 - `26_grok_critical_scan.py` now checkpoints each completed run to `grok_critical_scan.csv` and appends per-epoch train/test trajectories to `grok_critical_scan_trajectories.csv`.

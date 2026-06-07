@@ -1,0 +1,11 @@
+key,value
+dashifine_rows,10
+dashifine_unique_labels,10
+dashifine_path_l1_length,16
+dashifine_R_mean,0.2
+dashifine_z_mean,0.3
+textgraphs_graph_size,10.0
+textgraphs_density,0.1
+textgraphs_num_scc,10.0
+textgraphs_mean_between_centr,0.16666666666666669
+textgraphs_mean_close_centr,0.15713403880070548

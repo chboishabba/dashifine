@@ -1,0 +1,11 @@
+key,value
+weighted_transition_count,9
+weighted_weight_min,2
+weighted_weight_max,10
+weighted_weight_mean,4.555555555555555
+weighted_dR_sum,8
+weighted_dz_sum,8
+weighted_dstate_sum,16
+window_count,8
+window_size,3
+window_with_max_transition_weight,A B C

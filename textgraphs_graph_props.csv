@@ -1,0 +1,9 @@
+key,value
+mean_close_centr,0.15713403880070548
+size_largest_scc,1
+num_strong_connect_comp,10
+density,0.1
+graph_size,10
+num_self_loops,0
+mean_between_centr,0.16666666666666669
+mean_eig_centr,0.10199146466818679

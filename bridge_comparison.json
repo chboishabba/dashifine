@@ -1,0 +1,45 @@
+{
+  "bridge_read": {
+    "comparison_note": "Dashifine preserves ternary trajectory invariants; TextGraphs preserves graph recurrence/density/SCC on the same ordered token stream.",
+    "shared_canonical_token_form": "LABEL:self,norm,mirror",
+    "shared_sequence": true
+  },
+  "dashifine": {
+    "R_max": 3,
+    "R_mean": 0.2,
+    "R_min": -1,
+    "labels": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "E1",
+      "F",
+      "G",
+      "H",
+      "I"
+    ],
+    "path_l1_length": 16,
+    "phases": {
+      "phase1": 5,
+      "phase2": 5
+    },
+    "recurrent_labels": [],
+    "rows": 10,
+    "unique_labels": 10,
+    "z_max": 1,
+    "z_mean": 0.3,
+    "z_min": -1
+  },
+  "textgraphs": {
+    "density": 0.1,
+    "graph_size": 10.0,
+    "mean_between_centr": 0.16666666666666669,
+    "mean_close_centr": 0.15713403880070548,
+    "mean_eig_centr": 0.10222166904723813,
+    "num_self_loops": 0.0,
+    "num_strong_connect_comp": 10.0,
+    "size_largest_scc": 1.0
+  }
+}

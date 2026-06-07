@@ -136,6 +136,35 @@ law is the strongest current shape result.
 The Phase-2 operator-learning priority (reaction–diffusion / Gray–Scott) is
 outlined in `CONTEXT.md:3021`.
 
+### Current research directions
+
+Archive-backed thread sync on 2026-03-09 sharpened the near-term directions
+already implicit in this repo:
+
+* cone monotonicity and closure: consolidate the current branch-heavy closure
+  discussion into one authoritative statement of what is and is not proved by
+  the present HEPData cone screens.
+* wave/interference learning demos: treat sparse wave reconstruction and the
+  interference demo as benchmark artifacts, not one-off exploratory scripts.
+* LES implementation parity: keep spectral-gradient / filament-fining work as a
+  separate implementation lane focused on matching CPU spectral behavior before
+  claiming broader closure across architectures.
+
+### Quantum-facing utilities (current scope)
+
+This repo also contains a small family of quantum-facing utilities under
+`newtest/`, including CHSH/Bell helpers, qutrit/ternary Hilbert embeddings,
+SSH/lattice-oriented state constructors, and small `quantum_defect` demos.
+
+Current scope:
+* classical, quantum-faithful simulation and lattice-realization experiments
+* bridge material for a future `dashiQ` internal formalism / simulator layer
+
+Not current scope:
+* quantum hardware execution
+* quantum advantage claims
+* treating the NumPy-layer demos as a finished DASHI-to-quantum compiler
+
 ### Operator learning benchmark (`newtest/grayscott_krr.py`)
 
 * One-step Gray–Scott reaction–diffusion prediction using kernel ridge

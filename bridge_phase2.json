@@ -1,0 +1,113 @@
+{
+  "bridge_read": {
+    "note": "Weighted transitions make R/z visible to the bridge; window rows show local drift over the fixed conversational path.",
+    "window_size": 3
+  },
+  "weighted": {
+    "dR_sum": 8,
+    "dstate_sum": 16,
+    "dz_sum": 8,
+    "transition_count": 9,
+    "weight_max": 10,
+    "weight_mean": 4.555555555555555,
+    "weight_min": 2
+  },
+  "windows": [
+    {
+      "R_mean": 0.3333333333333333,
+      "R_range": 4,
+      "labels": "A B C",
+      "phase_mix": "phase1",
+      "repeat_count": 0,
+      "transition_weight_sum": 12,
+      "unique_labels": 3,
+      "window_start": 1,
+      "z_mean": -0.3333333333333333,
+      "z_range": 2
+    },
+    {
+      "R_mean": -1.0,
+      "R_range": 0,
+      "labels": "B C D",
+      "phase_mix": "phase1",
+      "repeat_count": 0,
+      "transition_weight_sum": 9,
+      "unique_labels": 3,
+      "window_start": 2,
+      "z_mean": -0.3333333333333333,
+      "z_range": 2
+    },
+    {
+      "R_mean": -1.0,
+      "R_range": 0,
+      "labels": "C D E",
+      "phase_mix": "phase1",
+      "repeat_count": 0,
+      "transition_weight_sum": 10,
+      "unique_labels": 3,
+      "window_start": 3,
+      "z_mean": 0.0,
+      "z_range": 2
+    },
+    {
+      "R_mean": -1.0,
+      "R_range": 0,
+      "labels": "D E E1",
+      "phase_mix": "phase1 phase2",
+      "repeat_count": 0,
+      "transition_weight_sum": 6,
+      "unique_labels": 3,
+      "window_start": 4,
+      "z_mean": 0.6666666666666666,
+      "z_range": 1
+    },
+    {
+      "R_mean": -1.0,
+      "R_range": 0,
+      "labels": "E E1 F",
+      "phase_mix": "phase1 phase2",
+      "repeat_count": 0,
+      "transition_weight_sum": 6,
+      "unique_labels": 3,
+      "window_start": 5,
+      "z_mean": 0.3333333333333333,
+      "z_range": 1
+    },
+    {
+      "R_mean": -0.3333333333333333,
+      "R_range": 2,
+      "labels": "E1 F G",
+      "phase_mix": "phase2",
+      "repeat_count": 0,
+      "transition_weight_sum": 8,
+      "unique_labels": 3,
+      "window_start": 6,
+      "z_mean": 0.3333333333333333,
+      "z_range": 1
+    },
+    {
+      "R_mean": 0.3333333333333333,
+      "R_range": 2,
+      "labels": "F G H",
+      "phase_mix": "phase2",
+      "repeat_count": 0,
+      "transition_weight_sum": 9,
+      "unique_labels": 3,
+      "window_start": 7,
+      "z_mean": 0.3333333333333333,
+      "z_range": 1
+    },
+    {
+      "R_mean": 1.6666666666666667,
+      "R_range": 2,
+      "labels": "G H I",
+      "phase_mix": "phase2",
+      "repeat_count": 0,
+      "transition_weight_sum": 8,
+      "unique_labels": 3,
+      "window_start": 8,
+      "z_mean": 0.6666666666666666,
+      "z_range": 1
+    }
+  ]
+}

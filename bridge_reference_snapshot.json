@@ -1,0 +1,37 @@
+{
+  "augmented_props": {
+    "density": 0.28888888888888886,
+    "graph_size": 10.0,
+    "mean_between_centr": 0.22361111111111115,
+    "mean_close_centr": 0.36809022907900896,
+    "mean_eig_centr": 0.2975225139869102,
+    "num_self_loops": 0.0,
+    "num_strong_connect_comp": 1.0,
+    "size_largest_scc": 10.0
+  },
+  "baseline_props": {
+    "density": 0.1,
+    "graph_size": 10.0,
+    "mean_between_centr": 0.16666666666666669,
+    "mean_close_centr": 0.15713403880070548,
+    "mean_eig_centr": 0.10199146466818679,
+    "num_self_loops": 0.0,
+    "num_strong_connect_comp": 10.0,
+    "size_largest_scc": 1.0
+  },
+  "correlations": {
+    "R_mean_dash vs R_mean_tg": 1.0,
+    "R_mean_dash vs transition_weight_sum_tg": 0.26949777665251384,
+    "R_range_dash vs transition_weight_sum_tg": 0.6240199689585151,
+    "z_mean_dash vs transition_weight_sum_tg": -0.7517309741553296,
+    "z_mean_dash vs z_mean_tg": 1.0
+  },
+  "variants_available": [
+    "baseline",
+    "hybrid_l1_recurrence",
+    "rz_l1_le_1",
+    "state_recurrence",
+    "ternary_l1_le_1",
+    "ternary_l1_le_2"
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "baseline_vs_augmented": {
+    "augmented": {
+      "density": 0.28888888888888886,
+      "graph_size": 10.0,
+      "mean_between_centr": 0.22361111111111115,
+      "mean_close_centr": 0.36809022907900896,
+      "mean_eig_centr": 0.2975225139869102,
+      "num_self_loops": 0.0,
+      "num_strong_connect_comp": 1.0,
+      "size_largest_scc": 10.0
+    },
+    "baseline": {
+      "density": 0.1,
+      "graph_size": 10.0,
+      "mean_between_centr": 0.16666666666666669,
+      "mean_close_centr": 0.15713403880070548,
+      "mean_eig_centr": 0.10199146466818679,
+      "num_self_loops": 0.0,
+      "num_strong_connect_comp": 10.0,
+      "size_largest_scc": 1.0
+    },
+    "delta": {
+      "density_delta": 0.18888888888888886,
+      "mean_between_centr_delta": 0.056944444444444464,
+      "mean_close_centr_delta": 0.21095619027830348,
+      "mean_eig_centr_delta": 0.19553104931872342,
+      "num_strong_connect_comp_delta": -9.0,
+      "size_largest_scc_delta": 9.0
+    }
+  },
+  "correlation_read": {
+    "R_mean_dash vs R_mean_tg": 1.0,
+    "R_mean_dash vs transition_weight_sum_tg": 0.26949777665251384,
+    "R_range_dash vs transition_weight_sum_tg": 0.6240199689585151,
+    "z_mean_dash vs transition_weight_sum_tg": -0.7517309741553296,
+    "z_mean_dash vs z_mean_tg": 1.0
+  },
+  "selected_rule": {
+    "score": 1.9956407059951642,
+    "selection_basis": "Maximize SCC collapse and centrality/density lift from baseline while penalizing extra edges.",
+    "variant": "ternary_l1_le_2"
+  },
+  "variant_ranking": [
+    {
+      "added_edges": 29.0,
+      "density": 0.4222222222222222,
+      "mean_between_centr": 0.09722222222222224,
+      "mean_close_centr": 0.5757533256217467,
+      "mean_eig_centr": 0.3026239949534212,
+      "num_strong_connect_comp": 1.0,
+      "score": 1.9956407059951642,
+      "size_largest_scc": 10.0,
+      "variant": "ternary_l1_le_2"
+    },
+    {
+      "added_edges": 21.0,
+      "density": 0.3333333333333333,
+      "mean_between_centr": 0.19861111111111113,
+      "mean_close_centr": 0.4101902823227688,
+      "mean_eig_centr": 0.25315754687747016,
+      "num_strong_connect_comp": 1.0,
+      "score": 1.7868612146202356,
+      "size_largest_scc": 10.0,
+      "variant": "rz_l1_le_1"
+    },
+    {
+      "added_edges": 17.0,
+      "density": 0.28888888888888886,
+      "mean_between_centr": 0.22361111111111115,
+      "mean_close_centr": 0.36809022907900896,
+      "mean_eig_centr": 0.2975225139869102,
+      "num_strong_connect_comp": 1.0,
+      "score": 1.7794039062636937,
+      "size_largest_scc": 10.0,
+      "variant": "ternary_l1_le_1"
+    },
+    {
+      "added_edges": 17.0,
+      "density": 0.28888888888888886,
+      "mean_between_centr": 0.22361111111111115,
+      "mean_close_centr": 0.36809022907900896,
+      "mean_eig_centr": 0.2975225139869104,
+      "num_strong_connect_comp": 1.0,
+      "score": 1.7794039062636937,
+      "size_largest_scc": 10.0,
+      "variant": "hybrid_l1_recurrence"
+    },
+    {
+      "added_edges": 4.0,
+      "density": 0.14444444444444443,
+      "mean_between_centr": 0.41111111111111115,
+      "mean_close_centr": 0.23583922274457395,
+      "mean_eig_centr": 0.2894242386454262,
+      "num_strong_connect_comp": 1.0,
+      "score": 1.6605824023655524,
+      "size_largest_scc": 10.0,
+      "variant": "state_recurrence"
+    },
+    {
+      "added_edges": 0.0,
+      "density": 0.1,
+      "mean_between_centr": 0.16666666666666669,
+      "mean_close_centr": 0.15713403880070548,
+      "mean_eig_centr": 0.10262431068836715,
+      "num_strong_connect_comp": 10.0,
+      "score": 0.0006328460201803637,
+      "size_largest_scc": 1.0,
+      "variant": "baseline"
+    }
+  ]
+}
