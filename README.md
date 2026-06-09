@@ -651,3 +651,4 @@ Roadmap
 ---
 
 Do you want me to now also include a rendered example set of the 10 slices in the README so GitHub visitors can immediately see the output without running the code? That would make the repo more compelling visually.
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/chboishabba/dashifine)
