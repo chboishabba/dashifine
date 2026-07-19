@@ -41,20 +41,28 @@ Minimize bridge cost: `ReconLoss + OrderLoss + InvariantLoss + ComplexityCost`.
 - Augmented and sweep outputs:
   - `textgraphs_graph_props_augmented.csv` for the current chosen non-local rule.
   - `textgraphs_variant_props.csv` for the batched non-local rule sweep.
-- Comparison outputs:
-  - `bridge_reference_snapshot.json` to lock the current baseline/augmented/correlation state.
+- Comparison and conformance outputs:
+  - `bridge_reference_snapshot.json` to summarize the current baseline/augmented/correlation state.
   - `bridge_variant_report.json` and `bridge_variant_report.csv` to compare baseline vs augmented and rank the current sweep variants.
+  - `bridge_conformance_golden.json` as the canonical A→I regression fixture.
+  - `test_bridge_conformance.py` to verify baseline, augmented, correlation, variant-shape, and exact R/z transport parity.
 - Current state:
   - baseline bridge is complete and reproducible;
   - augmented graph run is fixed and writes `textgraphs_graph_props_augmented.csv`;
-  - current sweep winner is `ternary_l1_le_2`, but this is selected by a simple global graph-lift score rather than a window-aware semantic objective.
+  - current sweep winner is `ternary_l1_le_2`, but this is selected by a simple global graph-lift score rather than a window-aware semantic objective;
+  - the conformance harness locks the current executable boundary between transported invariants and graph-derived observables.
 - Julia bridge behavior:
   - use a local TextGraphs-compatible implementation of the small graph-building and graph-property subset we need, so Phase 1 is reproducible even if the full `TextGraphs.jl` package has dependency/precompile issues.
 
+## Claim Boundary
+- Exact `R_mean`/`z_mean` parity across Python and Julia is a transport/conformance result.
+- Correlation of `R`/`z` with independently graph-derived quantities is an empirical comparison result.
+- Carrying a Dashifine invariant as graph metadata must not be described as TextGraphs independently discovering that invariant.
+
 ## Gaps (G)
-- Pick and fix one canonical serialization (C1 vs C2 vs C3) for reproducibility.
-- Add conformance harness: golden outputs for A→I path (adjacency, metrics) to detect drift.
-- Add MDL-style scoring across encoders.
+- Score sweep variants against windowed Dashifine behavior rather than only global graph lift.
+- Add MDL-style scoring across encoders and edge rules.
+- Revisit the selected non-local rule after semantic/window alignment is part of the objective.
 
 ## TODOs
 - [x] Implement Phase 1 emitter: produce canonical path rows + token stream from Dashifine source.
@@ -65,8 +73,8 @@ Minimize bridge cost: `ReconLoss + OrderLoss + InvariantLoss + ComplexityCost`.
 - [x] Lock the current bridge baseline in a compact snapshot artifact.
 - [x] Add a batched non-local edge-rule sweep and score the variants against the baseline.
 - [x] Emit a compact ranking report and pick the current best bridge rule.
-- [ ] Add a conformance golden artifact for the Julia bridge outputs.
-- [ ] Add conformance test artifact (golden JSON/CSV) for A→I path.
+- [x] Add a conformance golden artifact for the Julia bridge outputs.
+- [x] Add executable conformance test for the A→I path and interpretation boundary.
 - [ ] Score sweep variants against windowed Dashifine behavior, not only global graph lift.
 - [ ] Revisit the selected rule once the scoring includes semantic/window alignment.
 - [ ] Wire MDL-style bridge cost computation (even simple length + entropy) to rank encoders.
