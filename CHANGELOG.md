@@ -16,6 +16,8 @@
 
 - Synced the bridge state back into `COMPACTIFIED_CONTEXT.md`, `BRIDGE_PLAN.md`, and `TODO.md` so the documented intent matches the current artifact set and selected-rule status.
 - Recorded the current interpretation explicitly: the bridge is correct and structurally informative, but the present rule ranking is still based on global graph lift and should be revisited once windowed semantic alignment is part of the score.
+- Added `bridge_conformance_golden.json` and `test_bridge_conformance.py` to lock the canonical A→I baseline, augmented graph, correlation table, and variant contract.
+- The conformance layer now explicitly distinguishes exact transported `R`/`z` parity from graph-derived empirical comparisons, preventing metadata transport from being promoted as independent semantic discovery.
 - Synced repo-facing quantum scope notes into `README.md`, `COMPACTIFIED_CONTEXT.md`, and `TODO.md`: the `newtest/` CHSH / qutrit / SSH / quantum-defect utilities are now explicitly framed as classical, quantum-faithful simulation tools that should feed the `dashiQ` bridge/internalization effort rather than being described as quantum hardware execution.
 - Ran a local-DB context pass with the canonical archive and recorded the resolved thread metadata plus decisions for `P-adic quantum systems`, `Quarter turn in quantum`, and `Math Prof Outreach Stage`, tightening the repo wording around p-adic scope, the quarter-turn `J` seam, and wave-lift as an extension point rather than a finished closure claim.
 
