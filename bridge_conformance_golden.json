@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "fixture": "dashifine-a-to-i-textgraphs-bridge",
+  "tolerance": 1e-12,
+  "baseline_props": {
+    "mean_close_centr": 0.15713403880070548,
+    "size_largest_scc": 1.0,
+    "num_strong_connect_comp": 10.0,
+    "density": 0.1,
+    "graph_size": 10.0,
+    "num_self_loops": 0.0,
+    "mean_between_centr": 0.16666666666666669,
+    "mean_eig_centr": 0.10199146466818679
+  },
+  "augmented_props": {
+    "mean_close_centr": 0.36809022907900896,
+    "size_largest_scc": 10.0,
+    "num_strong_connect_comp": 1.0,
+    "density": 0.28888888888888886,
+    "graph_size": 10.0,
+    "num_self_loops": 0.0,
+    "mean_between_centr": 0.22361111111111115,
+    "mean_eig_centr": 0.2975225139869102
+  },
+  "correlations": {
+    "R_mean_dash vs transition_weight_sum_tg": 0.26949777665251384,
+    "R_range_dash vs transition_weight_sum_tg": 0.6240199689585151,
+    "z_mean_dash vs transition_weight_sum_tg": -0.7517309741553296,
+    "R_mean_dash vs R_mean_tg": 1.0,
+    "z_mean_dash vs z_mean_tg": 1.0
+  },
+  "variant_contract": {
+    "expected_variants": [
+      "baseline",
+      "hybrid_l1_recurrence",
+      "rz_l1_le_1",
+      "state_recurrence",
+      "ternary_l1_le_1",
+      "ternary_l1_le_2"
+    ],
+    "expected_metric_count_per_variant": 9,
+    "baseline_edge_count": 9.0,
+    "ternary_l1_le_1_added_edges": 17.0,
+    "ternary_l1_le_2_added_edges": 29.0
+  },
+  "interpretation_boundary": {
+    "exact_transport_fields": [
+      "R_mean_dash vs R_mean_tg",
+      "z_mean_dash vs z_mean_tg"
+    ],
+    "derived_comparison_fields": [
+      "R_mean_dash vs transition_weight_sum_tg",
+      "R_range_dash vs transition_weight_sum_tg",
+      "z_mean_dash vs transition_weight_sum_tg"
+    ],
+    "non_claim": "Exact equality of transported R/z aggregates is conformance, not independent semantic discovery; graph-derived comparisons remain empirical observables."
+  }
+}
